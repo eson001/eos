@@ -27,6 +27,7 @@ Release
 
 # Autoconf / Automake
 Makefile
+Makefile.in
 /debug/*
 /autom4te.cache/
 /config.h
@@ -38,6 +39,17 @@ Makefile
 *.o
 *.log
 *~
+libtool
+aclocal.m4
+compile
+config.guess
+config.h.in
+config.sub
+configure
+depcomp
+install-sh
+ltmain.sh
+missing
 /Release/
 /Release/
 /Release/

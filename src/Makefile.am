@@ -1,9 +1,10 @@
-AUTOMAKE_OPTIONS = foreign
+KE_OPTIONS = foreign
 
 AM_CXXFLAGS = -g -Wall
 
 noinst_PROGRAMS = $(top_builddir)/debug/SummarizeEngine
 __top_builddir__debug_SummarizeEngine_SOURCES = \
+    DPI.c \
     Carry.c \
     Common.c \
     Context.c \
@@ -25,4 +26,6 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     UDP.c \
     XDR.c \
     flow_stats_api.c \
-    interface.c
+    interface.c \
+    MySQL.c
+
