@@ -1,0 +1,44 @@
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Libraries
+*.lib
+*.a
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+Debug
+Release
+
+# Autoconf / Automake
+Makefile
+/debug/*
+/autom4te.cache/
+/config.h
+/config.status
+/m4/
+/stamp-h?
+.deps/
+.dirstamp
+*.o
+*.log
+*~
+/Release/
+/Release/
+/Release/
+/PF_RING/
