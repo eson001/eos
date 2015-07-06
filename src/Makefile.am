@@ -28,6 +28,5 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     flow_stats_api.c \
     interface.c \
     MySQL.c \
-    Report.c \
     Tns.c
 
