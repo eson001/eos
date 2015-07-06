@@ -153,6 +153,7 @@ typedef struct SODERO_MYSQL_HEAD {
 	unsigned char serial;
 } TMySQLHead, * PMySQLHead;
 
+
 typedef struct SODERO_MYSQL_COMPRESS {
 	unsigned int  length: 24;
 } TSoderoMySQLCompress, * PSoderoMySQLCompress;
@@ -178,6 +179,8 @@ typedef struct SODERO_MYSQL_GREETING {
 	const unsigned char * salt2    ;	//	Latter part of the encryption key
 	const unsigned char * plugin   ;
 } TSoderoMySQLGreeting, * PSoderoMySQLGreeting;
+
+
 
 typedef struct SODERO_MYSQL_LOGING {
 	unsigned int capability  ;	//	client attributes
@@ -300,7 +303,7 @@ typedef struct SODERO_MYSQL_RESPONSE {
 			const unsigned char * data;
 		} record;
 	};
-} TSoderoMySQLResponse, * PSoderoMySQLResponse;
+} TSoderoResponseMySQL, * PSoderoResponseMySQL;
 
 typedef struct SODERO_MYSQL_FIELD {
 	const unsigned char * dir;
@@ -317,7 +320,7 @@ typedef struct SODERO_MYSQL_FIELD {
 	unsigned char decimal;
 //	unsigned short filler2;
 	const unsigned char * value;
-} TSoderoMySQLField, * PSoderoMySQLField;
+} TSoderoMySQLField, * PMySQLSoderoField;
 
 typedef struct SODERO_MYSQL_VALUE {
 	TSoderoFlowDatum   value;
@@ -327,7 +330,7 @@ typedef struct SODERO_MYSQL_VALUE {
 	unsigned long long rttValue;
 	unsigned int       rttCount;
 	unsigned int       l2;
-} TSoderoMySQLValue, * PSoderoMySQLValue;
+} TSoderoMySQLValue, * PMySQLSoderoValue;
 
 typedef struct SODERO_MYSQL_PREPARE {
 	unsigned char  status;

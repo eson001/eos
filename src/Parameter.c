@@ -30,7 +30,7 @@ int gCaptureBuffer  = CAPTURE_BUFFER ;
 
 int gCheck = 0;
 const char * gDebug   = nullptr;
-const char * gDevice  = "eth0";
+const char * gDevice  = "eth9";
 const char * gServer  = "localhost";
 const char * gService = SODERO_REPORT_SERVICE;
 const char * gDPIRulesTable = "ip-port.tsv";
@@ -59,6 +59,7 @@ struct option longopts[] = {
 		{ "loop"     , required_argument, NULL, 'l'},
 		{ "rule"     , required_argument, NULL, 'r'},
 //		{ "device"   , required_argument, NULL, 'd'},
+              {"logging"  ,  required_argument, NULL, 'd'},
 		{ "server"   , required_argument, NULL, 'h'},
 		{ "service"  , required_argument, NULL, 'v'},
 		{ "dump"     , required_argument, NULL, 'e'},
@@ -82,15 +83,17 @@ void usege(void) {
 //	printf("-d --device      Report device\n");
 	printf("-h --server      Report server\n");
 	printf("-v --service     Report service\n");
+	printf("-d --logging     logging level\n");
+	printf("                 [Err:0, Wrnn:1, Info:2, Dbg:3]\n");
 	printf("-e --dump        dump level\n");
-	printf("                 [verbose|detail|report]");
+	printf("                 [verbose|detail|report]\n");
 	exit(0);
 }
 
 void initArguments(int argc, char** argv) {
 	srandom(time(NULL));
 	int result;
-	while((result = getopt_long(argc, argv, "ab:c:e:g:h:i:l:n:ps:t:v:", longopts, NULL)) != -1) {
+	while((result = getopt_long(argc, argv, "ab:c:e:g:h:i:l:n:ps:t:v:d:", longopts, NULL)) != -1) {
 		switch (result) {
 		case 'a':
 			gAlign = true;
@@ -176,6 +179,19 @@ void initArguments(int argc, char** argv) {
 			break;
 		case 'v':
 			gService = optarg;
+			break;
+		case 'd':
+			do {
+				if (atoi(optarg) <= LOG_DBG) {
+					g_config_log_level = atoi(optarg);
+					printf("The configure level:%d\n", g_config_log_level);
+					break;
+				}
+				else{
+					g_config_log_level = LOG_DBG;
+					break;
+				}	
+			} while(false);
 			break;
 		default:
 			usege();

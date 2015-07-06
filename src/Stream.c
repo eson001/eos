@@ -127,25 +127,8 @@ int dir_of_ipv4(PIPPair k, PIPPair v) {
 	return DIR_NONE;
 }
 
-//int isSameDir(PPortKey k, PPortKey v) {
-//	return k->value == v->value;
-//}
-
-int isPositiveIPort(PPortKey k, PPortKey v) {
-	return (k->sourIP == v->sourIP) && (k->destIP == v->destIP) && (k->sourPort == v->sourPort) && (k->destPort == v->destPort);
-}
-
-int isNegativeIPort(PPortKey k, PPortKey v) {
-	return (k->sourIP == v->destIP) && (k->destIP == v->sourIP) && (k->sourPort == v->destPort) && (k->destPort == v->sourPort);
-}
-
-int dir_of_iport(PPortKey k, PPortKey v) {
-	if (isPositiveIPort(k, v))
-		return DIR_CLIENT;
-	if (isNegativeIPort(k, v))
-		return DIR_SERVER;
-
-	return DIR_NONE;
+int dir_of_session(void * session, PIPPair k) {
+	return session ? dir_of_ipv4(&((PSoderoPortSession)session)->key.ipPair, k) : DIR_NONE;
 }
 
 int isPositiveIPPort(PPortHeader k, PPortHeader v) {
@@ -163,10 +146,6 @@ int dir_of_ipv4port(PPortHeader k, PPortHeader v) {
 		return DIR_SERVER;
 
 	return DIR_NONE;
-}
-
-int dir_of_session(void * session, PPortKey k) {
-	return session ? dir_of_iport(&((PSoderoPortSession)session)->key, k) : DIR_NONE;
 }
 
 int isClientDir(int dir) {

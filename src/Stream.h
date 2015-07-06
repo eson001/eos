@@ -168,15 +168,11 @@ extern int isSameDir(PIPPair k, PIPPair v);
 extern int isPositiveIP(PIPPair k, PIPPair v);
 extern int isNegativeIP(PIPPair k, PIPPair v);
 extern int dir_of_ipv4(PIPPair k, PIPPair v);
-
-extern int isPositiveIPort(PPortKey k, PPortKey v);
-extern int isNegativeIPort(PPortKey k, PPortKey v);
-extern int dir_of_iport(PPortKey k, PPortKey v);
-
+extern int dir_of_session(void * session, PIPPair k);
 extern int isPositiveIPPort(PPortHeader k, PPortHeader v);
-extern int isNegativeIPPort(PPortHeader k, PPortHeader v);
 
-extern int dir_of_session(void * session, PPortKey k);
+extern int isNegativeIPPort(PPortHeader k, PPortHeader v);
+extern int dir_of_ipv4port(PPortHeader k, PPortHeader v);
 extern int isClientDir(int dir);
 extern int isServerDir(int dir);
 

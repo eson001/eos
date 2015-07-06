@@ -20,9 +20,10 @@
 #include "Core.h"
 #include "TCP.h"
 #include "MySQL.h"
+#include "Tns.h"
 
 TSoderoTCPSet gDefaultTCPProto = {
-		.l = (1 <<SESSION_SET_L_MYSQL),
+		.l = ((1 <<SESSION_SET_L_MYSQL) | (1 <<SESSION_SET_L_ORACLE)),
 		.h = 0
 };
 
@@ -767,8 +768,18 @@ int detectTCP(PSoderoTCPSession session, PSoderoTCPValue value,
 		const unsigned char * data, unsigned int size,
 		int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether) {
 	//	Detect Application must use valu's buffer
-
-	if (session->value.set.l | session->value.set.h)
+	if ((session->value.set.l&(1 << SESSION_SET_L_ORACLE)) | session->value.set.h)
+	do {
+	       int byte = detectTNS(session, value, 0, data, size, dir, tcp, ip, ether);
+		if (byte > 0) {
+			session->flag = SESSION_TYPE_MINOR_ORACLE;
+			return byte;
+		}
+		if (byte < 0) {
+			session->value.set.l &= ~ (1 << SESSION_SET_L_ORACLE);
+		}
+	}while (false);
+	if ((session->value.set.l&(1 << SESSION_SET_L_MYSQL)) | session->value.set.h)
 	do {
 		int byte = detectMySQL(session, value, 0, data, size, dir, tcp, ip, ether);
 		if (byte > 0) {
@@ -778,7 +789,9 @@ int detectTCP(PSoderoTCPSession session, PSoderoTCPValue value,
 		if (byte < 0) {
 			session->value.set.l &= ~ (1 << SESSION_SET_L_MYSQL);
 		}
+		
 	} while (false);
+	
 
 	//	Always check http
 	int total = value->offset + size;
@@ -848,6 +861,10 @@ void processTCPData(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 				break;
 			case  SESSION_TYPE_MINOR_MYSQL:
 				result = processMySQLPacket(session, dir * session->key.dir, value, base, data, size,
+					length, state, tcp, ip, ether);
+				break;
+		       case  SESSION_TYPE_MINOR_ORACLE:
+				result = processTNSPacket(session, dir * session->key.dir, value, base, data, size,
 					length, state, tcp, ip, ether);
 				break;
 			case SESSION_TYPE_MINOR_CUSTOM:
@@ -1186,16 +1203,10 @@ int processTCPPacket(const void * data, int size, int length, PIPHeader ip, PEth
 
 	PSoderoTCPSession session = processTCPHandshake(result, tcp, payload_size, &key, ether, seq, ack);
 
-	switch(gTotal.count) {
-	case 98:
-		gDebugSession = session;
-		break;
-	}
-
 	if (session) {
 		counterTCPNode(session, &key, ether, size, length);
 
-		int dir = dir_of_iport(&session->key, &key);
+		int dir = dir_of_ipv4(&session->key.ipPair, &key.ipPair);
 
 		updatePortSession((PSoderoPortSession)session, dir, payload_size, length, gTime);
 		if (session->state == SODERO_TCP_ESTABLISHED)

@@ -14,8 +14,6 @@
 extern "C" {
 #endif
 
-#define __ASYNCHRONOUS_TRANSMIT
-
 struct TSoderoClientRegisterMsg {
 	u_char vrsn[4];
 	u_int times;
@@ -25,6 +23,8 @@ struct TSoderoClientRegisterMsg {
 };
 typedef struct TSoderoClientRegisterMsg TSoderoClientRegisterMsg;
 
+typedef TSoderoClientRegisterMsg *PSoderoClientRegisterMsg;
+
 struct TSoderoNodeMsg {
 	u_char mac[6];
 	u_short vlan;
@@ -32,12 +32,6 @@ struct TSoderoNodeMsg {
 	u_char name[255];
 };
 typedef struct TSoderoNodeMsg TSoderoNodeMsg;
-
-struct TSoderoNodeReportMsg {
-	u_int nodes_len;
-	TSoderoNodeMsg *nodes_val;
-};
-typedef struct TSoderoNodeReportMsg TSoderoNodeReportMsg;
 
 enum TSoderoSessionType {
 	SESSION_TYPE_FLOW_HEAD = 0,
@@ -48,6 +42,7 @@ enum TSoderoSessionType {
 	SESSION_TYPE_ARP = 202,
 	SESSION_TYPE_ICMP = 203,
 	SESSION_TYPE_MYSQL = 204,
+	SESSION_TYPE_ORACLE = 205,
 };
 typedef enum TSoderoSessionType TSoderoSessionType;
 
@@ -63,6 +58,7 @@ enum TSoderoSessionEventType {
 //	EVENT_TYPE_DB_REQUEST = 501,
 //	EVENT_TYPE_DB_RESPONSE = 502,
 	EVENT_TYPE_DB_MYSQL = 511,
+	EVENT_TYPE_DB_ORACLE= 512,
 	EVENT_TYPE_ARP = 601,
 	EVENT_TYPE_ICMP = 701,
 };
@@ -340,6 +336,45 @@ struct TSoderoMySQLCommandMsg {
 };
 typedef struct TSoderoMySQLCommandMsg TSoderoMySQLCommandMsg;
 
+enum TSoderoTnsType {
+	TNS_TYPE_LOGIN, TNS_TYPE_COMMAND,
+};
+typedef enum TSoderoTnsType TSoderoTnsType;
+
+struct TSoderoTnsLoginMsg {
+	u_int64_t session_id;
+	u_int64_t application_id;
+	u_int64_t reqTime;
+	u_int64_t rspTime;
+	struct {
+		u_int user_len;
+		u_char *user_val;
+	} user;
+	struct {
+		u_int database_len;
+		u_char *database_val;
+	} database;
+	u_char status;
+};
+typedef struct TSoderoTnsLoginMsg TSoderoTnsLoginMsg;
+
+struct TSoderoTnsCommandMsg {
+	u_int64_t session_id;
+	u_int64_t application_id;
+	u_int64_t reqFirst;
+	u_int64_t reqLast ;
+	u_int  reqCount;		//	Block count
+	u_int  reqBytes;		//	Total bytes
+	u_int  rspCount;		//	Block count
+	u_int  rspBytes;		//	Total bytes
+	u_int64_t rspFirst;
+	u_int64_t rspLast ;
+	u_int64_t row;		//	total row count of result set;
+	u_int  col;		//	total col of result set;
+	u_int  set;		//	total result set count of command's reponse
+};
+typedef struct TSoderoTnsCommandMsg TSoderoTnsCommandMsg;
+
 struct TSoderoMetricFinishMsg {
 	u_int time;
 	u_int count;
@@ -351,6 +386,74 @@ struct TSoderoServerAcknowledgeMsg {
 };
 typedef struct TSoderoServerAcknowledgeMsg TSoderoServerAcknowledgeMsg;
 
+struct TSoderoTCPSessionContent {
+	TSoderoSessionType type;
+	union {
+		TSoderoFLOWSessionHead flow_head;
+		TSoderoFLOWSessionBody flow_body;
+		TSoderoHTTPSessionHead http_head;
+		TSoderoHTTPSessionBody http_body;
+		TSoderoDNSSessionMsg dns;
+		TSoderoARPThing arp;
+		struct {
+			TSoderoICMPType  type;
+			union {
+				TSoderoICMPThing thing;
+				TSoderoICMPMsg   msg;
+			};
+		} icmp;
+		struct {
+			TSoderoMySQLType type;
+			union {
+				TSoderoMySQLLoginMsg   login;
+				TSoderoMySQLCommandMsg command;
+			};
+		} mysql;
+		struct {
+			TSoderoTnsType type;
+			union {
+				TSoderoTnsLoginMsg   login;
+				TSoderoTnsCommandMsg command;
+			};
+		} tns;
+	} TSoderoTCPSessionContent_u;
+};
+typedef struct TSoderoTCPSessionContent TSoderoTCPSessionContent;
+
+struct TSoderoSessionMsg {
+	TSoderoSessionEventType event;
+	TSoderoTCPSessionContent session_content;
+};
+typedef struct TSoderoSessionMsg TSoderoSessionMsg;
+
+enum TCPReportType {
+	CLIENT_REGISTER = 0,
+	SODERO_NODES = 1,
+	ORIGIN_NODES = 2,
+	METRIC_FINISH = 3,
+	SESSION_EVENT = 4,
+	SERVER_ACK = 200,
+};
+typedef enum TCPReportType TCPReportType;
+
+struct TSoderoTCPReportMsg {
+	TCPReportType type;
+	union {
+		TSoderoClientRegisterMsg client_register;
+		struct {
+			u_int nodes_len;
+			TSoderoNodeMsg *nodes_val;
+		} nodes;
+		struct {
+			u_int origin_nodes_len;
+			TSoderoNodeMsg *origin_nodes_val;
+		} origin_nodes;
+		TSoderoSessionMsg session_event;
+		TSoderoMetricFinishMsg metric_finish;
+		TSoderoServerAcknowledgeMsg server_ack;
+	} TSoderoTCPReportMsg_u;
+};
+typedef struct TSoderoTCPReportMsg TSoderoTCPReportMsg;
 
 struct TSoderoCountMetricMsg {
 	u_int agent_id;
@@ -383,162 +486,6 @@ struct TSoderoPeriodicMetricMsg {
 };
 typedef struct TSoderoPeriodicMetricMsg TSoderoPeriodicMetricMsg;
 
-/* the xdr functions */
-
-//extern bool_t xdr_TSoderoClientRegisterMsg(XDR *, TSoderoClientRegisterMsg*);
-//extern bool_t xdr_PSoderoClientRegisterMsg(XDR *, PSoderoClientRegisterMsg*);
-//extern bool_t xdr_TSoderoNodeMsg(XDR *, TSoderoNodeMsg*);
-//extern bool_t xdr_TSoderoSessionType(XDR *, TSoderoSessionType*);
-//extern bool_t xdr_TSoderoICMPType(XDR *, TSoderoICMPType*);
-//extern bool_t xdr_TSoderoMySQLType(XDR *, TSoderoMySQLType*);
-//extern bool_t xdr_TSoderoSessionEventType(XDR *, TSoderoSessionEventType*);
-//extern bool_t xdr_TSoderoL2Type(XDR *, TSoderoL2Type*);
-//extern bool_t xdr_TSoderoL3Type(XDR *, TSoderoL3Type*);
-//extern bool_t xdr_TSoderoFLOWSessionHead(XDR *, TSoderoFLOWSessionHead*);
-//extern bool_t xdr_TSoderoFLOWSessionBody(XDR *, TSoderoFLOWSessionBody*);
-//extern bool_t xdr_TSoderoHTTPSessionHead(XDR *, TSoderoHTTPSessionHead*);
-//extern bool_t xdr_TSoderoHTTPSessionBody(XDR *, TSoderoHTTPSessionBody*);
-//extern bool_t xdr_TSoderoDNSAnswer(XDR *, TSoderoDNSAnswer*);
-//extern bool_t xdr_TSoderoDNSMsg(XDR *, TSoderoDNSSessionMsg*);
-//extern bool_t xdr_TSoderoARPMsg(XDR *, TSoderoARPThing*);
-//extern bool_t xdr_TSoderoICMPThing(XDR * xdrs, TSoderoICMPThing *objp);
-//extern bool_t xdr_TSoderoICMPMsg(XDR *, TSoderoICMPMsg*);
-//extern bool_t xdr_TSoderoMySQLLoginMsg(XDR *, TSoderoMySQLLoginMsg*);
-//extern bool_t xdr_TSoderoMySQLCommandMsg(XDR *, TSoderoMySQLCommandMsg*);
-//extern bool_t xdr_TSoderoMetricFinishMsg(XDR *, TSoderoMetricFinishMsg*);
-//extern bool_t xdr_TSoderoServerAcknowledgeMsg(XDR *, TSoderoServerAcknowledgeMsg*);
-//extern bool_t xdr_TSoderoTCPSessionContent(XDR *, TSoderoTCPSessionContent*);
-//extern bool_t xdr_TSoderoSessionMsg(XDR *, TSoderoSessionMsg*);
-//extern bool_t xdr_TSoderoCountMetricMsg(XDR *, TSoderoCountMetricMsg*);
-//extern bool_t xdr_TSoderoPeriodicMetricMsg(XDR *, TSoderoPeriodicMetricMsg*);
-
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-
-struct TSoderoSessionContent {
-	TSoderoSessionType type;
-	union {
-		TSoderoFLOWSessionHead flow_head;
-		TSoderoFLOWSessionBody flow_body;
-		TSoderoHTTPSessionHead http_head;
-		TSoderoHTTPSessionBody http_body;
-		TSoderoDNSSessionMsg dns;
-		TSoderoARPThing arp;
-		struct {
-			TSoderoICMPType  type;
-			union {
-				TSoderoICMPThing thing;
-				TSoderoICMPMsg   msg;
-			};
-		} icmp;
-		struct {
-			TSoderoMySQLType type;
-			union {
-				TSoderoMySQLLoginMsg   login;
-				TSoderoMySQLCommandMsg command;
-			};
-		} mysql;
-	} TSoderoSessionContent_u;
-};
-typedef struct TSoderoSessionContent TSoderoSessionContent;
-
-struct TSoderoSessionMsg {
-	TSoderoSessionEventType event;
-	TSoderoSessionContent session_content;
-};
-typedef struct TSoderoSessionMsg TSoderoSessionMsg;
-
-enum ReportType {
-	CLIENT_REGISTER =   0,
-	SODERO_NODES    =   1,
-	ORIGIN_NODES    =   2,
-	METRIC_FINISH   =   3,
-	SESSION_EVENT   =   4,
-	COUNT_METRIC    = 100,
-	PERIODIC_METRIC = 101,
-	SERVER_ACK      = 200,
-};
-typedef enum ReportType ReportType;
-
-struct TSoderoReportMsg {
-	ReportType type;
-	union {
-		TSoderoClientRegisterMsg client_register;
-		TSoderoNodeReportMsg nodes;
-		TSoderoSessionMsg session_event;
-		TSoderoMetricFinishMsg metric_finish;
-		TSoderoServerAcknowledgeMsg server_ack;
-		TSoderoCountMetricMsg count_metric;
-		TSoderoPeriodicMetricMsg periodic_metric;
-	} TSoderoReportMsg_u;
-};
-typedef struct TSoderoReportMsg TSoderoReportMsg;
-
-extern bool_t xdr_TSoderoReportMsg(XDR *, TSoderoReportMsg*);
-
-#else
-
-enum TCPReportType {
-	CLIENT_REGISTER = 0,
-	SODERO_NODES = 1,
-	ORIGIN_NODES = 2,
-	METRIC_FINISH = 3,
-	SESSION_EVENT = 4,
-	SERVER_ACK = 200,
-};
-typedef enum TCPReportType TCPReportType;
-
-struct TSoderoTCPSessionContent {
-	TSoderoSessionType type;
-	union {
-		TSoderoFLOWSessionHead flow_head;
-		TSoderoFLOWSessionBody flow_body;
-		TSoderoHTTPSessionHead http_head;
-		TSoderoHTTPSessionBody http_body;
-		TSoderoDNSSessionMsg dns;
-		TSoderoARPThing arp;
-		struct {
-			TSoderoICMPType  type;
-			union {
-				TSoderoICMPThing thing;
-				TSoderoICMPMsg   msg;
-			};
-		} icmp;
-		struct {
-			TSoderoMySQLType type;
-			union {
-				TSoderoMySQLLoginMsg   login;
-				TSoderoMySQLCommandMsg command;
-			};
-		} mysql;
-	} TSoderoTCPSessionContent_u;
-};
-typedef struct TSoderoTCPSessionContent TSoderoTCPSessionContent;
-
-struct TSoderoSessionMsg {
-	TSoderoSessionEventType event;
-	TSoderoTCPSessionContent session_content;
-};
-typedef struct TSoderoSessionMsg TSoderoSessionMsg;
-
-struct TSoderoTCPReportMsg {
-	TCPReportType type;
-	union {
-		TSoderoClientRegisterMsg client_register;
-		struct {
-			u_int nodes_len;
-			TSoderoNodeMsg *nodes_val;
-		} nodes;
-		struct {
-			u_int origin_nodes_len;
-			TSoderoNodeMsg *origin_nodes_val;
-		} origin_nodes;
-		TSoderoSessionMsg session_event;
-		TSoderoMetricFinishMsg metric_finish;
-		TSoderoServerAcknowledgeMsg server_ack;
-	} TSoderoTCPReportMsg_u;
-};
-typedef struct TSoderoTCPReportMsg TSoderoTCPReportMsg;
-
 enum UDPReportType {
 	COUNT_METRIC = 100, PERIODIC_METRIC = 101,
 };
@@ -553,9 +500,38 @@ struct TSoderoUDPReportMsg {
 };
 typedef struct TSoderoUDPReportMsg TSoderoUDPReportMsg;
 
+/* the xdr functions */
+
+extern bool_t xdr_TSoderoClientRegisterMsg(XDR *, TSoderoClientRegisterMsg*);
+extern bool_t xdr_PSoderoClientRegisterMsg(XDR *, PSoderoClientRegisterMsg*);
+extern bool_t xdr_TSoderoNodeMsg(XDR *, TSoderoNodeMsg*);
+extern bool_t xdr_TSoderoSessionType(XDR *, TSoderoSessionType*);
+extern bool_t xdr_TSoderoICMPType(XDR *, TSoderoICMPType*);
+extern bool_t xdr_TSoderoMySQLType(XDR *, TSoderoMySQLType*);
+extern bool_t xdr_TSoderoSessionEventType(XDR *, TSoderoSessionEventType*);
+extern bool_t xdr_TSoderoL2Type(XDR *, TSoderoL2Type*);
+extern bool_t xdr_TSoderoL3Type(XDR *, TSoderoL3Type*);
+extern bool_t xdr_TSoderoFLOWSessionHead(XDR *, TSoderoFLOWSessionHead*);
+extern bool_t xdr_TSoderoFLOWSessionBody(XDR *, TSoderoFLOWSessionBody*);
+extern bool_t xdr_TSoderoHTTPSessionHead(XDR *, TSoderoHTTPSessionHead*);
+extern bool_t xdr_TSoderoHTTPSessionBody(XDR *, TSoderoHTTPSessionBody*);
+extern bool_t xdr_TSoderoDNSAnswer(XDR *, TSoderoDNSAnswer*);
+extern bool_t xdr_TSoderoDNSMsg(XDR *, TSoderoDNSSessionMsg*);
+extern bool_t xdr_TSoderoARPMsg(XDR *, TSoderoARPThing*);
+extern bool_t xdr_TSoderoICMPThing(XDR * xdrs, TSoderoICMPThing *objp);
+extern bool_t xdr_TSoderoICMPMsg(XDR *, TSoderoICMPMsg*);
+extern bool_t xdr_TSoderoMySQLLoginMsg(XDR *, TSoderoMySQLLoginMsg*);
+extern bool_t xdr_TSoderoMySQLCommandMsg(XDR *, TSoderoMySQLCommandMsg*);
+extern bool_t xdr_TSoderoMetricFinishMsg(XDR *, TSoderoMetricFinishMsg*);
+extern bool_t xdr_TSoderoServerAcknowledgeMsg(XDR *, TSoderoServerAcknowledgeMsg*);
+extern bool_t xdr_TSoderoTCPSessionContent(XDR *, TSoderoTCPSessionContent*);
+extern bool_t xdr_TSoderoSessionMsg(XDR *, TSoderoSessionMsg*);
+extern bool_t xdr_TCPReportType(XDR *, TCPReportType*);
 extern bool_t xdr_TSoderoTCPReportMsg(XDR *, TSoderoTCPReportMsg*);
+extern bool_t xdr_TSoderoCountMetricMsg(XDR *, TSoderoCountMetricMsg*);
+extern bool_t xdr_TSoderoPeriodicMetricMsg(XDR *, TSoderoPeriodicMetricMsg*);
+extern bool_t xdr_UDPReportType(XDR *, UDPReportType*);
 extern bool_t xdr_TSoderoUDPReportMsg(XDR *, TSoderoUDPReportMsg*);
-#endif
 
 #ifdef __cplusplus
 }

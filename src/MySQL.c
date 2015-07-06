@@ -183,7 +183,7 @@ int parseKeyValue(const unsigned char * data, int size) {
 	return true;
 }
 
-int parseMySQLField(PSoderopMySQLStatus status, PSoderoMySQLField result, const unsigned char * data, int size) {
+int parseMySQLField(PSoderopMySQLStatus status, PMySQLSoderoField result, const unsigned char * data, int size) {
 //	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
 //
@@ -205,11 +205,11 @@ int parseMySQLField(PSoderopMySQLStatus status, PSoderoMySQLField result, const 
 	return true;
 }
 
-int parseMySQLValue(PSoderopMySQLStatus status, PSoderoMySQLValue result, const unsigned char * data, int size) {
+int parseMySQLValue(PSoderopMySQLStatus status, PMySQLSoderoValue result, const unsigned char * data, int size) {
 	return true;
 }
 
-int parseMySQLOK(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLOK(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	int base = 0;
 	unsigned char * text = (unsigned char *)(result + 1);
 	parseLEInteger(ok.affect);
@@ -239,7 +239,7 @@ int parseMySQLOK(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const 
 	return base == size;
 }
 
-int parseMySQLEOF(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLEOF(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
 
@@ -248,7 +248,7 @@ int parseMySQLEOF(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const
 	return base == size;
 }
 
-int parseMySQLError(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLError(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	int base = 0;
 	unsigned char * text = (unsigned char *)(result + 1);
 
@@ -398,7 +398,7 @@ int parseMySQLLoginRequest(PSoderopMySQLStatus status, PSoderoMySQLLogin result,
 		return parseMySQLLoginV320(status, result, data, size);
 }
 
-int parseMySQLLogingResponse(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLLogingResponse(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	int base = 0;
 	parseInteger(type);
 	switch(result->type) {
@@ -444,19 +444,19 @@ int parseMySQLCommandRequest(PSoderopMySQLStatus status, PSoderoMySQLApplication
 	case MYSQL_CMD_SHUTDOWN        :
 		parseInteger(shutdown);
 		break;
-//	case MYSQL_CMD_STATISTICS      :	//	No parameter
-//		break;
-//	case MYSQL_CMD_PROCESS_INFO    :	//	No parameter
-//		break;
-//	case MYSQL_CMD_CONNECT         :	//	No parameter
-//		break;
+	case MYSQL_CMD_STATISTICS      :	//	No parameter
+		break;
+	case MYSQL_CMD_PROCESS_INFO    :	//	No parameter
+		break;
+	case MYSQL_CMD_CONNECT         :	//	No parameter
+		break;
 	case MYSQL_CMD_PROCESS_KILL    :
 		parseInteger(id);
 		break;
-//	case MYSQL_CMD_DEBUG           :	//	No parameter
-//		break;
-//	case MYSQL_CMD_PING            :	//	No parameter
-//		break;
+	case MYSQL_CMD_DEBUG           :	//	No parameter
+		break;
+	case MYSQL_CMD_PING            :	//	No parameter
+		break;
 	case MYSQL_CMD_TIME            :	//	No parameter
 	case MYSQL_CMD_DELAYED_INSERT  :	//	No parameter
 	case MYSQL_CMD_CHANGE_USER     :
@@ -514,8 +514,8 @@ int parseMySQLCommandRequest(PSoderopMySQLStatus status, PSoderoMySQLApplication
 		parseInteger(fetch.id);
 		parseInteger(fetch.count);
 		break;
-//	case MYSQL_COM_DAEMON          :	//	No parameter
-//		break;
+	case MYSQL_COM_DAEMON          :	//	No parameter
+		break;
 	case MYSQL_COM_BINLOG_DUMP_GTID:
 		parseInteger(gtid.flags);
 		parseInteger(gtid.id);
@@ -527,18 +527,14 @@ int parseMySQLCommandRequest(PSoderopMySQLStatus status, PSoderoMySQLApplication
 //		parseMemory(gtid.value, gtid.count);
 		skipData(gtid.count);
 		break;
-//	case MYSQL_COM_RESET_CONNECTION:	//	No parameter
-//		break;
-	default:
-		printf("MySQL: Unsupported command %d\n", result->command);
-		base = size;
+	case MYSQL_COM_RESET_CONNECTION:	//	No parameter
 		break;
 	}
 
 	return base == size;
 }
 
-int parseMySQLResultHead(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLResultHead(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
 
@@ -549,15 +545,15 @@ int parseMySQLResultHead(PSoderopMySQLStatus status, PSoderoMySQLResponse result
 	return base == size;
 }
 
-int parseMySQLResultColumn(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLResultColumn(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	return false;
 }
 
-int parseMySQLResultRow(PSoderopMySQLStatus status, PSoderoMySQLResponse result, const unsigned char * data, int size) {
+int parseMySQLResultRow(PSoderopMySQLStatus status, PSoderoResponseMySQL result, const unsigned char * data, int size) {
 	return false;
 }
 
-int parseMySQLCols(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoMySQLResponse result,
+int parseMySQLCols(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoResponseMySQL result,
 		const unsigned char * data, int size, int next) {
 	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
@@ -572,12 +568,11 @@ int parseMySQLCols(PSoderopMySQLStatus status, PSoderoMySQLApplication applicati
 			break;
 	}
 	char buffer[MYSQL_BUFFER_SIZE];
-	bzero(buffer, sizeof(TSoderoMySQLField));
-	PSoderoMySQLField field = (PSoderoMySQLField) buffer;
+	PMySQLSoderoField field = (PMySQLSoderoField) buffer;
 	return parseMySQLField(status, field, data, size);
 }
 
-int parseMySQLRows(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoMySQLResponse result,
+int parseMySQLRows(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoResponseMySQL result,
 		const unsigned char * data, int size, int next, int head) {
 	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
@@ -594,19 +589,18 @@ int parseMySQLRows(PSoderopMySQLStatus status, PSoderoMySQLApplication applicati
 			}
 			break;
 		case MYSQL_STATUS_ERROR:
-			if (parseMySQLError(status, result, data + base, size - base)) {
+			if (parseMySQLEOF(status, result, data + base, size - base)) {
 				application->step = next;
 				return true;
 			}
 			break;
 	}
 	char buffer[MYSQL_BUFFER_SIZE];
-	bzero(buffer, sizeof(TSoderoMySQLValue));
-	PSoderoMySQLValue value = (PSoderoMySQLValue) buffer;
+	PMySQLSoderoValue value = (PMySQLSoderoValue) buffer;
 	return parseMySQLValue(status, value, data, size);
 }
 
-int parseMySQLResultset(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoMySQLResponse result,
+int parseMySQLResultset(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoResponseMySQL result,
 		const unsigned char * data, int size) {
 //	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
@@ -646,7 +640,7 @@ int parseMySQLResultset(PSoderopMySQLStatus status, PSoderoMySQLApplication appl
 	return false;
 }
 
-int parseMySQLCommandResponse(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoMySQLResponse result,
+int parseMySQLCommandResponse(PSoderopMySQLStatus status, PSoderoMySQLApplication application, PSoderoResponseMySQL result,
 		const unsigned char * data, int size) {
 	int base = 0;
 //	unsigned char * text = (unsigned char *)(result + 1);
@@ -749,7 +743,6 @@ int detectMySQL(PSoderoTCPSession session, PSoderoTCPValue value,
 
 	char buffer[MYSQL_BUFFER_SIZE];
 	PSoderoMySQLGreeting result = (PSoderoMySQLGreeting)buffer;
-	bzero(buffer, sizeof(TSoderoMySQLGreeting));
 	if (parseMySQLGreeting(result, data, size)) {
 		session->value.mysql.protocol = result->protocol;
 		session->value.mysql.server = result->capability;
@@ -765,6 +758,7 @@ int detectMySQL(PSoderoTCPSession session, PSoderoTCPValue value,
 	return DETECT_NEGATIVE;
 }
 
+
 int parseMySQLLogon(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session, int dir,
 	PMySQLHead const head, const unsigned char * data, int size, int total) {
 	//	Login request or response must in one packet.
@@ -779,8 +773,7 @@ int parseMySQLLogon(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session, 
 //			if (session->value.mysql.login.rspTime) return DETECT_NEGATIVE;
 //			if (dir != session->key.dir) return DETECT_NEGATIVE;
 			char buffer[MYSQL_BUFFER_SIZE];
-			bzero(buffer, sizeof(TSoderoMySQLResponse));
-			PSoderoMySQLResponse result = (PSoderoMySQLResponse) buffer;
+			PSoderoResponseMySQL result = (PSoderoResponseMySQL) buffer;
 			if (parseMySQLLogingResponse(&session->value.mysql, result, data, size)) {
 				switch(result->type) {
 				case MYSQL_STATUS_OK:
@@ -824,7 +817,6 @@ int parseMySQLLogon(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session, 
 //			if (session->value.mysql.login.reqTime) return DETECT_NEGATIVE;
 //			if (dir == session->key.dir) return DETECT_NEGATIVE;
 			char buffer[MYSQL_BUFFER_SIZE];
-			bzero(buffer, sizeof(TSoderoMySQLLogin));
 			PSoderoMySQLLogin result = (PSoderoMySQLLogin) buffer;
 			if(parseMySQLLoginRequest(&session->value.mysql, result, data, size)) {
 				session->value.mysql.client = result->capability;
@@ -848,8 +840,8 @@ int parseMySQLCommand(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session
 	PSoderoMySQLApplication application = session->session;
 	if (dir > 0) {	//	Response
 		if (application) {
-//			if (((application->rspCount + 1) & 0xFF) != head->serial)
-//				return PARSE_ERROR;
+//				if (((application->rspCount + 1) & 0xFF) != head->serial)
+//					return PARSE_ERROR;
 			processA(&application->traffic.incoming, total);
 			if (!application->rspFirst)
 				application->rspFirst = gTime;
@@ -864,12 +856,11 @@ int parseMySQLCommand(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session
 		}
 
 		char buffer[MYSQL_BUFFER_SIZE];
-		bzero(buffer, sizeof(TSoderoMySQLResponse));
-		PSoderoMySQLResponse result = (PSoderoMySQLResponse) buffer;
+		PSoderoResponseMySQL result = (PSoderoResponseMySQL) buffer;
 		if (parseMySQLCommandResponse(&session->value.mysql, application, result, data, total)) {
 			if (application->flow == MYSQL_FLOW_DONE) {
-//				printf("MySQL: close command %d application %p with session %p @ %llu\n",
-//					application->command, application, session, gPacket);
+//					printf("MySQL: close command %d application %p with session %p @ %llu\n",
+//							application->command, application, session, gPacket);
 				sodero_pointer_add(getClosedApplications(), application);
 				session->session = nullptr;
 				session->value.mysql.serial = 0;
@@ -877,15 +868,15 @@ int parseMySQLCommand(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session
 			}
 			return (size <= total ? size : total) + sizeof(*head);
 		}
-		printf("MySQL: parse command response failure %d\n", result->type);
+		printf("MySQL: parse command response failure\n");
 		return PARSE_ERROR;
 	}
 
 	if (dir < 0) {	//	Request
 		if (application) {
 			//	Check subsequent packets
-//			if (((application->reqCount + 1) & 0xFF) != head->serial)
-//				return PARSE_ERROR;
+//				if (((application->reqCount + 1) & 0xFF) != head->serial)
+//					return PARSE_ERROR;
 			if (application->flow == MYSQL_FLOW_CMD_INLINE) {
 				if (total == 0)
 					application->step = MYSQL_IL_RSP;
@@ -900,15 +891,14 @@ int parseMySQLCommand(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session
 		}
 
 		char buffer[MYSQL_BUFFER_SIZE];
-		bzero(buffer, sizeof(TSoderoMySQLCommand));
 		PSoderoMySQLCommand result = (PSoderoMySQLCommand) buffer;
 		if (parseMySQLCommandRequest(&session->value.mysql, application, result, data, total)) {
 			application = takeApplication(sizeof(TSoderoMySQLApplication));
 			detail->command++;
 			gMySQLTake++;
 			newApplication((PSoderoApplication)application, (PSoderoSession)session);
-//			printf("MySQL: create command %d application %p with session %p @ %llu\n",
-//				application->command, application, session, gPacket);
+//				printf("MySQL: create command %d application %p with session %p @ %llu\n",
+//						application->command, application, session, gPacket);
 			application->command = result->command;
 			session->session = application;
 			session->value.mysql.serial = head->serial;
@@ -923,7 +913,7 @@ int parseMySQLCommand(PSoderoMySQLPacketDetail detail, PSoderoTCPSession session
 
 			return (size <= total ? size : total) + sizeof(*head);
 		}
-		printf("MySQL: parse command request failure %d\n", result->command);
+		printf("MySQL: parse command request failure\n");
 		return PARSE_ERROR;
 	}
 	printf("MySQL: command dir error\n");

@@ -73,6 +73,7 @@ typedef struct SODERO_CAPTURE_CONTEXT {
 	PSummaryContext data;
 } TCaptureContext, * PCaptureContext;
 
+typedef struct pcap_pkthdr TCaptureHeader, * PCaptureHeader;
 typedef void (*TSoderoCaptureHandler)(void * data, const PEtherPacket packet, const PPCAPPacketHeader pkthdr);
 
 extern pcap_t * createDevice(const char * device);

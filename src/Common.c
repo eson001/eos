@@ -12,7 +12,6 @@
 #include <strings.h>
 #include <time.h>
 #include <netdb.h>
-#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/types.h>
@@ -23,6 +22,7 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/in.h>
+#include <stdarg.h>
 
 #include <ifaddrs.h>
 #if defined(__FreeBSD__) || defined(__APPLE__)
@@ -38,14 +38,13 @@
 FILE * gDump = nullptr;
 #endif
 
-int gRunning = true;
+FILE* gLogFile = nullptr;
+TSodero_logging_level g_config_log_level = LOG_DBG;
+#define LOG_BUF_LEN 1024
 
 const char * REPORT_TYPE_HEAD = "Head";
 const char * REPORT_TYPE_BODY = "Body";
 
-#ifdef __DEBUG__
-void * gDebugSession = nullptr;
-#endif
 
 TEtherData EMPTY_ETHER_DATA = {{0ULL, 0ULL}};
 
@@ -132,6 +131,58 @@ unsigned long long gOtherFree = 0;
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+int DPI_LogInit(char *szFName)
+{
+	gLogFile = fopen(szFName,"wb");
+	if (gLogFile==nullptr)
+	{
+		perror("open");
+		return -1;
+	}
+	setvbuf(gLogFile, nullptr, _IONBF, 0);
+    return true;
+}
+
+int DPI_Log(TSodero_logging_level log_level, char *fmt,...)
+{
+    char txtBuf[LOG_BUF_LEN+1];
+    static int file_len = 0;
+    va_list ap;
+    int ret = 0;
+    time_t t;
+    struct tm *timenow;
+
+    if (log_level > g_config_log_level)
+    {
+       return true;
+    }
+
+    if (gLogFile)
+    {
+    	va_start(ap,fmt);	
+    	ret = vsnprintf(txtBuf, sizeof(txtBuf)-1,fmt,ap);
+    	va_end(ap);
+    	txtBuf[LOG_BUF_LEN]='\0';
+    	time(&t);
+       timenow   =   localtime(&t);
+       file_len += strlen(txtBuf);
+
+       if (file_len >= LOG_FILE_LEN)
+       {
+           fseek(gLogFile,0,SEEK_SET);
+           file_len = 0;
+       }
+    	fprintf(gLogFile,"%d-%.2d-%.2d %.2d:%.2d:%.2d  %s\r\n",1990+timenow->tm_year,timenow->tm_mon,timenow->tm_mday,timenow->tm_hour,timenow->tm_min,timenow->tm_sec, txtBuf);        
+    }
+    return ret;
+}
+void DPI_LogClose()
+{
+	if (gLogFile) {
+		fflush(gLogFile);
+		fclose(gLogFile);
+	}
+}
 
 void * takeMemory(size_t size) {
 #ifdef __EXPORT_STATISTICS__
@@ -605,8 +656,10 @@ void enum_interfaces(void) {
 		if (!ioctl(fd, SIOCGIFCONF, (char *) &ifc)) {
 			intrface = ifc.ifc_len / sizeof(struct ifreq);
 			printf("interface num is intrface = %d\n", intrface);
+			LogInf("Interface num:%d", intrface);
 			while (intrface-- > 0) {
 				printf("net device %s is ", buf[intrface].ifr_name);
+				
 
 				if (ioctl(fd, SIOCGIFFLAGS, (char *) &buf[intrface])) {
 					char str[256];
@@ -615,6 +668,7 @@ void enum_interfaces(void) {
 				}
 
 				printf("%s%s\n", buf[intrface].ifr_flags & IFF_UP ? "UP" : "DOWN", buf[intrface].ifr_flags & IFF_PROMISC ? " & PROMISC" : "");
+				LogInf("net device %s is %s%s", buf[intrface].ifr_name, buf[intrface].ifr_flags & IFF_UP ? "UP" : "DOWN", buf[intrface].ifr_flags & IFF_PROMISC ? " & PROMISC" : "");
 				//	Get IP of the net card
 				if (ioctl(fd, SIOCGIFADDR, (char *) &buf[intrface])) {
 					char str[256];
@@ -649,6 +703,13 @@ void enum_interfaces(void) {
 				}
 
 				printf("HW address is: %02x:%02x:%02x:%02x:%02x:%02x\n",
+						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[0],
+						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[1],
+						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[2],
+						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[3],
+						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[4],
+						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[5]);
+			      LogInf("HW address is: %02x:%02x:%02x:%02x:%02x:%02x",
 						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[0],
 						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[1],
 						(unsigned char) buf[intrface].ifr_hwaddr.sa_data[2],
@@ -865,6 +926,7 @@ void processE(PSoderoUnitDatum datum, int value) {
 
 void processP(PSoderoPacketDatum datum, int value) {
 	processA(&datum->total, value);
+
 
 #ifdef __PACKET_RANKS__
 	int index = value / CACHE_LINE;

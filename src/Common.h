@@ -774,13 +774,7 @@ struct SODERO_APPLICATION {
 
 PPortKey key_of_sesson(PSoderoSession session);
 
-extern int gRunning;
-
 extern TEtherData EMPTY_ETHER_DATA;
-
-#ifdef __DEBUG__
-extern void * gDebugSession;
-#endif
 
 extern const char * REPORT_TYPE_HEAD;
 extern const char * REPORT_TYPE_BODY;
@@ -857,6 +851,26 @@ extern unsigned long long gCustomFree;
 extern unsigned long long gOtherFree ;
 
 extern FILE * gDump;
+
+/*DPI logging*/
+typedef enum SODERO_LOGGING_LEVEL
+{
+    LOG_ERR,
+    LOG_WARN,
+    LOG_INFO,
+    LOG_DBG,
+}TSodero_logging_level;
+
+int DPI_Log(TSodero_logging_level log_level, char *fmt,...);
+int DPI_LogInit(char *szFName);
+void DPI_LogClose();
+extern TSodero_logging_level g_config_log_level;
+
+#define LOG_FILE_LEN 204800000
+#define LogErr(fmt,...)  DPI_Log(LOG_ERR, "[ERR]  %s:%d    " fmt,__FUNCTION__,__LINE__,__VA_ARGS__)
+#define LogWarn(fmt,...) DPI_Log(LOG_WARN, "[WAR]  %s:%d    " fmt,__FUNCTION__,__LINE__,__VA_ARGS__)
+#define LogInf(fmt,...)  DPI_Log(LOG_INFO, "[INF]  %s:%d     " fmt,__FUNCTION__,__LINE__,__VA_ARGS__)
+#define LogDbg(fmt,...)  DPI_Log(LOG_DBG, "[DBG]  %s:%d " fmt,__FUNCTION__,__LINE__,__VA_ARGS__)
 
 #endif
 

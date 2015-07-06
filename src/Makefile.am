@@ -27,5 +27,7 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     XDR.c \
     flow_stats_api.c \
     interface.c \
-    MySQL.c
+    MySQL.c \
+    Report.c \
+    Tns.c
 

@@ -12,9 +12,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <errno.h>
-#include <pthread.h>
 #include <netdb.h>
-#include <ifaddrs.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -27,6 +25,7 @@
 #include <arpa/inet.h>
 #include <rpc/types.h>
 #include <rpc/rpc.h>
+#include <ifaddrs.h>
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #include <net/if_dl.h>
 #endif
@@ -44,74 +43,16 @@
 #include "Logic.h"
 #include "Report.h"
 
-//extern int sodero_report_shakehand(void);
-//extern int sodero_report_finished(unsigned int count);
-//extern int sodero_report_node(PNodeIndex node, const char * name, int type);
-//
-//extern int sodero_report_field_value (PNodeIndex index, PXDRFieldName field, unsigned long long value);
-//extern int sodero_report_named_value (PNodeIndex index, const char *  name , unsigned long long value);
-//extern int sodero_report_field_datum (PNodeIndex index, PXDRFieldName field, PSoderoUnitDatum   value);
-//extern int sodero_report_named_datum (PNodeIndex index, const char *  name , PSoderoUnitDatum   value);
-//
-//extern int sodero_report_flow_head(PSoderoPortSession value, int flag);
-//extern int sodero_report_flow_body(PSoderoPortSession value, int flag);
-//extern int sodero_report_http_head(PSoderoApplicationHTTP value, int flag);
-//extern int sodero_report_http_body(PSoderoApplicationHTTP value, int flag);
-//extern int sodero_report_arp_event(PSoderoARPEvent session, unsigned long time);
-//extern int sodero_report_icmp_event(PSoderoICMPEvent session, unsigned long time);
-//extern int sodero_report_dns_application(PSoderoApplicationDNS value, int flag);
-//extern int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag);
-
-//extern void reset_period_report(PSoderoPeriodReport report);
-//extern void sodero_report(PSoderoPeriodReport report);
-
-//extern int sodero_report_icmp_session(PSoderoICMPSession session, int way);
-//extern int sodero_report_udp_session(PSoderoUDPSession session, int way);
-//extern int sodero_report_tcp_session(PSoderoTCPSession session, int way);
-
-int sodero_xdr_ack(int * fd);
-
-int sodero_report_udp_application(PSoderoApplication session, int flag);
-int sodero_report_tcp_application(PSoderoApplication session, int flag);
+extern int sodero_report_udp_application(PSoderoApplication session, int flag);
+extern int sodero_report_tcp_application(PSoderoApplication session, int flag);
 
 unsigned long long gReportCounter;
 
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-//pthread_mutex_t gTransmitMutex = PTHREAD_MUTEX_INITIALIZER;
-//pthread_cond_t  gTransmitCond  = PTHREAD_COND_INITIALIZER ;
-
-PReportBlock gReportBlocks[SODER0_REPORT_BLOCK_COUNT];
-PReportBlock gReportCurrent = nullptr;
-int gOffset = 0;
-volatile int gReportHead = 0;
-volatile int gReportTail = 0;
-int gSocket = 0;
-int gTraffic = 0;
-
-PReportBlock getReport(void) {
-	return gReportBlocks[gReportTail];
-}
-
-void initial_report(void) {
-//	gReport = sodero_create_pointer_pool();
-}
-
-void release_report(void) {
-	for (int i = 0; i < SODER0_REPORT_BLOCK_COUNT; i++) {
-
-	}
-//	if (gReport)
-//		sodero_destroy_pointer_pool(gReport);
-//	gReport = nullptr;
-}
-
-#else
 int gTCPSocket;
 int gUDPSocket;
 
 int gTCPBytes;
 int gUDPBytes;
-#endif
 
 int  gTCPOffset = 0;
 char gTCPBuffer[2 * XDR_BUFFER_SIZE];
@@ -257,111 +198,15 @@ int isExportApplication(int proto, int flag) {
 	return false;
 }
 
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-
-void * transmitor(void * handler) {
-	while(gRunning) {
-//		pthread_mutex_lock(&gTransmitMutex);
-//		pthread_cond_wait(&gTransmitCond, & gTransmitMutex);
-//		pthread_mutex_unlock(&gTransmitMutex);
-		if (gRunning) {
-			while(gReportHead > gReportTail) {
-				int index = gReportTail % SODER0_REPORT_BLOCK_COUNT;
-				PReportBlock block = gReportBlocks[index];
-				asm volatile("" ::: "memory");
-				gReportBlocks[index] = nullptr;
-				asm volatile("" ::: "memory");
-				gReportTail++;
-				if (block) {
-					int offset = 0;
-					while(gSocket) {
-						int result = write(gSocket, block->data + offset, block->used - offset);
-						if (result <= 0) {
-							sodero_report_disconnect();
-							break;
-						}
-
-						offset += result;
-						if (offset < block->used) {
-							gTraffic += result;
-							continue;
-						}
-						break;
-					}
-
-					if (block->flag) {
-						sodero_xdr_ack(&gSocket);
-					}
-					freeMemory(block);
-				} else
-					printf("Bad Report Block\n");
-			}
-		}
-	}
-	return handler;
-}
-
-void flushSocket(int flag) {
-	if (gReportCurrent) {
-		gReportCurrent->flag = flag;
-		asm volatile("" ::: "memory");
-		int index = gReportHead % SODER0_REPORT_BLOCK_COUNT;
-		if (gReportBlocks[index])
-			printf("Bad Report Block Slot\n");
-		gReportBlocks[index] = gReportCurrent;
-		asm volatile("" ::: "memory");
-		gReportCurrent = nullptr;
-		asm volatile("" ::: "memory");
-		gReportHead++;
-	}
-//	if (flag) {
-//		pthread_mutex_trylock(&gTransmitMutex);
-//		pthread_cond_broadcast(&gTransmitCond);
-//		pthread_mutex_unlock(&gTransmitMutex);
-//	}
-}
-
-int write2socket(int * fd, void * buffer, unsigned int length, int flag) {
-	processA(&gReportSend, length);
-
-#ifdef __SKIP_WRITE__
-	return true;
-#else
-	if (fd) {
-		if (length == 0) return FALSE;
-		if (length > 0xFFFF) return FALSE;
-
-		unsigned char * base = (unsigned char*) (gOffset + (unsigned long)gReportCurrent);
-
-		int total = length + sizeof(unsigned short);
-		int left = SODERO_REPPORT_SIZE - gOffset - total;
-		if (left < 0) {
-			flushSocket(false);
-		}
-
-		if (!gReportCurrent)
-			gReportCurrent = takeMemory(SODERO_REPPORT_SIZE);
-
-		*(unsigned short*) base = length;
-		base += sizeof(unsigned short);
-		memcpy(base, buffer, length);
-		gOffset += length;
-
-		if (flag)
-			flushSocket(flag);
-	}
-#endif
-	return FALSE;
-}
-
-#else
-
-int write2socket(int * fd, void * buffer, unsigned int length, unsigned int proto) {
+int write2socket(int * fd, void * buffer, int length, int proto) {
 	processA(&gReportSend, length);
 
 #ifdef __SKIP_WRITE__
 	return TRUE;
 #else
+#ifdef __DEBUG__
+//	usleep(0);
+#endif
 	if (fd) {
 		int offset = 0;
 		while(*fd) {
@@ -374,11 +219,8 @@ int write2socket(int * fd, void * buffer, unsigned int length, unsigned int prot
 			if (offset < length) {
 				switch (proto) {
 				case IPPROTO_TCP:
-					gTCPBytes += result;
 					continue;
-				case IPPROTO_UDP:
-					gUDPBytes += result;
-					/* no break */
+//				case IPPROTO_UDP:
 				default:
 					return false;
 				}
@@ -386,10 +228,9 @@ int write2socket(int * fd, void * buffer, unsigned int length, unsigned int prot
 			return TRUE;
 		}
 	}
-#endif
 	return FALSE;
-}
 #endif
+}
 
 int sodero_connect2server(const char * server, const char * service, int type) {
     struct addrinfo hints, *servinfo;
@@ -478,7 +319,7 @@ int sodero_xdr_okay(int * fd) {
 #ifdef __SKIP_WRITE__
 	return TRUE;
 #else
-	return sodero_xdr_ack(fd) == SODERO_XDR_SUCCESS;
+	return sodero_xdr_ack(fd) == SODER_XDR_SUCCESS;
 #endif
 }
 
@@ -488,11 +329,8 @@ int sodero_xdr_cmd_register(int * fd, unsigned int time) {
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_encode_register(&xdr, time, gVersion.s, gMAC.bytes, gHost.bytes, gName)) {
 		int length = xdr_getpos(&xdr);
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-		return write2socket(fd, buffer, length, false);
-#else
+		gTCPBytes += length;
 		return write2socket(fd, buffer, length, IPPROTO_TCP);
-#endif
 	}
 	return false;
 }
@@ -506,11 +344,8 @@ int sodero_xdr_cmd_finish(int * fd, unsigned int time, unsigned int count) {
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_encode_finish(&xdr, time, count)) {
 		int length = xdr_getpos(&xdr);
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-		return write2socket(fd, buffer, length, true);
-#else
+		gTCPBytes += length;
 		return write2socket(fd, buffer, length, IPPROTO_TCP);
-#endif
 	}
 	return false;
 }
@@ -520,16 +355,30 @@ int sodero_xdr_cmd_node(int * fd, unsigned int time, PNodeIndex node, const char
 		printf("Node %.2x:%.2x:%.2x:%.2x:%.2x:%.2x-%u.%u.%u.%u\n",
 				node->mac.bytes[0], node->mac.bytes[1], node->mac.bytes[2], node->mac.bytes[3], node->mac.bytes[4], node->mac.bytes[5],
 				node->ip.l.s[0], node->ip.l.s[1], node->ip.l.s[2], node->ip.l.s[3]);
+	 /*write to log file*/
+       /*LogDbg("Node %.2x:%.2x:%.2x:%.2x:%.2x:%.2x-%u.%u.%u.%u\n",
+				node->mac.bytes[0], node->mac.bytes[1], node->mac.bytes[2], node->mac.bytes[3], node->mac.bytes[4], node->mac.bytes[5],
+				node->ip.l.s[0], node->ip.l.s[1], node->ip.l.s[2], node->ip.l.s[3]);*/
+       
 	XDR xdr;
 	char buffer[XDR_BUFFER_SIZE];
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_encode_node(&xdr, time, node, name, type)) {
 		int length = xdr_getpos(&xdr);
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-		return write2socket(fd, buffer, length, false);
-#else
+		gTCPBytes += length;
 		return write2socket(fd, buffer, length, IPPROTO_TCP);
-#endif
+	}
+	return false;
+}
+
+int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
+	XDR xdr;
+	char buffer[XDR_BUFFER_SIZE];
+	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
+	if (xdr_TSoderoTCPReportMsg(&xdr, message)) {
+		int length = xdr_getpos(&xdr);
+		gTCPBytes += length;
+		return write2socket(fd, buffer, length, IPPROTO_TCP);
 	}
 	return false;
 }
@@ -550,16 +399,18 @@ int sodero_xdr_cmd_value(int * fd, unsigned int time, PNodeIndex index, PXDRFiel
 		printf("Node %.2x:%.2x:%.2x:%.2x:%.2x:%.2x-%u.%u.%u.%u XDR %s %llu\n",
 				index->mac.bytes[0], index->mac.bytes[1], index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5],
 				index->ip.l.s[0], index->ip.l.s[1], index->ip.l.s[2], index->ip.l.s[3], name->string, value);
+
+       /*write to log file*/
+       LogDbg("[Metric:%d |%s |%.2x:%.2x:%.2x:%.2x:%.2x:%.2x |%u.%u.%u.%u | %llu ]",time, name->string, index->mac.bytes[0], index->mac.bytes[1], 
+                            index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5], index->ip.l.s[0], index->ip.l.s[1], index->ip.l.s[2], index->ip.l.s[3],value);
+       
 	XDR xdr;
 	char buffer[XDR_BUFFER_SIZE];
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_encode_field_value(&xdr, time, index, name, value)) {
 		int length = xdr_getpos(&xdr);
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-		return write2socket(fd, buffer, length, false);
-#else
+		gUDPBytes += length;
 		return write2socket(fd, buffer, length, IPPROTO_UDP);
-#endif
 	}
 	return false;
 }
@@ -569,28 +420,25 @@ int sodero_xdr_cmd_datum(int * fd, unsigned int time, PNodeIndex index, PXDRFiel
 		printf("Node %.2x:%.2x:%.2x:%.2x:%.2x:%.2x-%u.%u.%u.%u XDR %s count %llu sum %llu max %llu min %llu\n",
 				index->mac.bytes[0], index->mac.bytes[1], index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5],
 				index->ip.l.s[0], index->ip.l.s[1], index->ip.l.s[2], index->ip.l.s[3], name->string, value->count, value->sum, value->max, value->min);
+
+       /*write to log file*/
+       LogDbg("[Metric:%d |%s |%.2x:%.2x:%.2x:%.2x:%.2x:%.2x |%u.%u.%u.%u | %llu ]",time, name->string, index->mac.bytes[0], index->mac.bytes[1], 
+                            index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5], index->ip.l.s[0], index->ip.l.s[1], index->ip.l.s[2], index->ip.l.s[3],value);
+       
 	XDR xdr;
 	char buffer[XDR_BUFFER_SIZE];
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_encode_field_datum(&xdr, time, index, name, value)) {
 		int length = xdr_getpos(&xdr);
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-		return write2socket(fd, buffer, length, false);
-#else
+		gUDPBytes += length;
 		return write2socket(fd, buffer, length, IPPROTO_UDP);
-#endif
 	}
 	return false;
 }
 
 int sodero_report_shakehand(void) {
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	int socket = gSocket;
-#else
-	int socket = gTCPSocket;
-#endif
-	if(sodero_xdr_cmd_register(&socket, gReportCounter)) {
-		int serial = sodero_xdr_ack(&socket);
+	if(sodero_xdr_cmd_register(&gTCPSocket, gReportCounter)) {
+		int serial = sodero_xdr_ack(&gTCPSocket);
 		if (serial > 0)
 			gAgentID = serial;
 		return gAgentID > 0;
@@ -599,22 +447,12 @@ int sodero_report_shakehand(void) {
 }
 
 int sodero_report_finished(unsigned int count) {
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	int socket = gSocket;
-#else
-	int socket = gTCPSocket;
-#endif
-	return sodero_xdr_cmd_finish(&socket, gReportCounter, count) && sodero_xdr_okay(&socket);
+	return sodero_xdr_cmd_finish(&gTCPSocket, gReportCounter, count) && sodero_xdr_okay(&gTCPSocket);
 }
 
 int sodero_report_node(PNodeIndex node, const char * name, int type) {
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	int socket = gSocket;
-#else
-	int socket = gTCPSocket;
-#endif
 	checkNode(node, name, type);
-	return sodero_xdr_cmd_node(&socket, gReportCounter, node, name, type);	// && sodero_xdr_okay(gTCPSocket);
+	return sodero_xdr_cmd_node(&gTCPSocket, gReportCounter, node, name, type);	// && sodero_xdr_okay(gTCPSocket);
 }
 
 //int sodero_report_nodes(int count, const PNodeIndex * node) {
@@ -623,12 +461,7 @@ int sodero_report_node(PNodeIndex node, const char * name, int type) {
 
 int sodero_report_field_value (PNodeIndex index, PXDRFieldName field, unsigned long long value) {
 	if (!field) return false;
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	int socket = gSocket;
-#else
-	int socket = gUDPSocket;
-#endif
-	return sodero_xdr_cmd_value(&socket, gReportCounter, index, field, value);
+	return sodero_xdr_cmd_value(&gUDPSocket, gReportCounter, index, field, value);
 }
 
 int sodero_report_named_value (PNodeIndex index, const char *  name, unsigned long long value) {
@@ -642,12 +475,7 @@ int sodero_report_named_value (PNodeIndex index, const char *  name, unsigned lo
 
 int sodero_report_field_datum (PNodeIndex index, PXDRFieldName field, PSoderoUnitDatum value) {
 	if (!field) return false;
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	int socket = gSocket;
-#else
-	int socket = gUDPSocket;
-#endif
-	return sodero_xdr_cmd_datum(&socket, gReportCounter, index, field, value);
+	return sodero_xdr_cmd_datum(&gUDPSocket, gReportCounter, index, field, value);
 }
 
 int sodero_report_named_datum (PNodeIndex index, const char *  name, PSoderoUnitDatum value) {
@@ -657,1282 +485,6 @@ int sodero_report_named_datum (PNodeIndex index, const char *  name, PSoderoUnit
 	strncpy(text, name, sizeof(text)-1);
 	TXDRFieldName field = {text, size};
 	return sodero_report_field_datum(index, &field, value);
-}
-
-void sodero_report_disconnect(void) {
-	gAgentID = 0;
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	if (gSocket > 0) close(gSocket);
-	gSocket = 0;
-#else
-	if (gTCPSocket > 0) close(gTCPSocket);
-	gTCPSocket = 0;
-	if (gUDPSocket > 0) close(gUDPSocket);
-	gUDPSocket = 0;
-#endif
-}
-
-#if defined(__FreeBSD__) || defined(__APPLE__)
-#define UNIX_INTERFACE_LEN 32
-#define UNIX_INTERFACE_MAX 64
-
-typedef struct {
-	TNodeIndex node;
-	char       name[UNIX_INTERFACE_LEN];
-} TUnixNodeItem, * PUnixNodeItem;
-
-TUnixNodeItem items[UNIX_INTERFACE_MAX];
-
-PUnixNodeItem lookupNodeItem(const char * name) {
-	for (int i = 0; i < UNIX_INTERFACE_MAX; i++) {
-		PUnixNodeItem result = &items[i];
-		if (strlen(result->name) > 0) {
-			if (same_str(result->name, name))
-				return result;
-		} else {
-			strncpy(result->name, name, sizeof(result->name)-1);
-			return result;
-		}
-	}
-	return nullptr;
-}
-#endif
-
-void sodero_report_self(void) {
-#ifdef __linux__
-	register int fd, intrface;
-	struct ifreq buf[MAXINTERFACES];
-	struct ifconf ifc;
-
-	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0) {
-		ifc.ifc_len = sizeof(buf);
-		ifc.ifc_buf = (caddr_t) buf;
-		if (!ioctl(fd, SIOCGIFCONF, (char *) &ifc)) {
-			intrface = ifc.ifc_len / sizeof(struct ifreq);
-
-			while (intrface-- > 0) {
-				TNodeIndex node;
-				bzero(&node, sizeof(node));
-				if (ioctl(fd, SIOCGIFADDR, (char *) &buf[intrface])) {
-					printf("cpm: ioctl device %s ip", buf[intrface].ifr_name);
-					continue;
-				}
-				node.ip.l.ip = ((struct sockaddr_in*) (&buf[intrface].ifr_addr))->sin_addr.s_addr;
-
-				if (ioctl(fd, SIOCGIFHWADDR, (char *) &buf[intrface])) {
-					printf( "cpm: ioctl device %s mac", buf[intrface].ifr_name);
-					continue;
-				}
-//				node.mac = *(PMAC)buf[intrface].ifr_hwaddr.sa_data;
-				memcpy(&node.mac, buf[intrface].ifr_hwaddr.sa_data, sizeof(node.mac));
-
-				sodero_report_node(&node, buf[intrface].ifr_name, ORIGIN_NODES);
-			}
-		} else
-			perror("cpm: ioctl");
-
-	} else
-		perror("cpm: socket");
-
-	close(fd);
-#endif
-#if defined(__FreeBSD__) || defined(__APPLE__)
-	struct ifaddrs *ifa,*curifa;
-
-	if(getifaddrs(&ifa) < 0) {
-		perror("getifaddrs error");
-		return;	//	exit(127);
-	}
-
-#define UNIX_INTERFACE_LEN 32
-#define UNIX_INTERFACE_MAX 64
-
-	bzero(items, sizeof(items));
-
-	for(curifa = ifa; curifa != NULL; curifa = curifa->ifa_next) {
-		if(curifa->ifa_addr->sa_family == AF_INET) {
-			PUnixNodeItem item = lookupNodeItem(curifa->ifa_name);
-			if (item)
-				item->node.ip.l.ip = ((struct sockaddr_in*)curifa->ifa_addr)->sin_addr.s_addr;
-		}
-		if(curifa->ifa_addr->sa_family == AF_LINK) {
-			PUnixNodeItem item = lookupNodeItem(curifa->ifa_name);
-			if (item)
-				memcpy(&item->node.mac, curifa->ifa_addr, sizeof(item->node.mac));
-		}
-	}
-	freeifaddrs(ifa);
-
-	for (int i = 0; i < UNIX_INTERFACE_MAX; i++) {
-		PUnixNodeItem item = &items[i];
-		if (strlen(item->name) > 0) {
-			if (item->node.ip.l.ip)	//	 && item->node.mac.b4
-				sodero_report_node(&item->node, item->name, ORIGIN_NODES);
-		}
-	}
-
-#endif
-}
-
-int sodero_report_connect(void) {
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	if (gSocket > 0) close(gSocket);
-	gSocket = sodero_connect2server(gServer, gService, SOCK_STREAM);
-	if (gSocket < 0) return false;
-#else
-	if (gTCPSocket > 0) close(gTCPSocket);
-	gTCPSocket = sodero_connect2server(gServer, gService, SOCK_STREAM);
-	if (gTCPSocket < 0) return false;
-
-	if (gUDPSocket > 0) close(gUDPSocket);
-	gUDPSocket = sodero_connect2server(gServer, gService, SOCK_DGRAM);
-	if (gUDPSocket < 0) return false;
-#endif
-
-//	int flag = 1;
-//	int ret = setsockopt (gTCPSocket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
-//	if (ret < 0)
-//		printf("Close nagle failure\n");
-
-	if (!sodero_report_shakehand()) {
-		sodero_report_disconnect();
-		return false;
-	}
-
-	gNode.mac = gMAC;
-	gNode.ip  = gHost ;
-
-	sodero_report_self();
-
-	return TRUE;
-}
-
-int sodero_report_check(void) {
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-	if (gSocket) return TRUE;
-#else
-	if (gTCPSocket | gUDPSocket) return TRUE;
-#endif
-	sodero_report_disconnect();
-	return sodero_report_connect();
-}
-
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_SYN = "counter.tcp.syn";
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_ACK = "counter.tcp.ack";
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_FIN = "counter.tcp.fin";
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_RST = "counter.tcp.rst";
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_URG = "counter.tcp.urg";
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_ECN = "counter.tcp.ecn";
-const char * SODERO_REPORT_IDENT_COUNTER_TCP_CWR = "counter.tcp.cwr";
-
-const char * SODERO_REPORT_IDENT_ETHER_COUNT = "l2.frames";	//	"ether.packet.count";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES = "l2.bytes";	//	"ether.packet.bytes";
-
-const char * SODERO_REPORT_IDENT_ETHER_BCAST_COUNT = "l2.bcast_frames";
-const char * SODERO_REPORT_IDENT_ETHER_BCAST_BYTES = "l2.bcast_bytes";
-const char * SODERO_REPORT_IDENT_ETHER_MCAST_COUNT = "l2.mcast_frames";
-const char * SODERO_REPORT_IDENT_ETHER_MCAST_BYTES = "l2.mcast_bytes";
-const char * SODERO_REPORT_IDENT_ETHER_UCAST_COUNT = "l2.ucast_frames";
-const char * SODERO_REPORT_IDENT_ETHER_UCAST_BYTES = "l2.ucast_bytes";
-
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_00064 = "l2.frames_64";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_00064 = "l2.bytes_64";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_00128 = "l2.frames_128";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_00128 = "l2.bytes_128";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_00256 = "l2.frames_256";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_00256 = "l2.bytes_256";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_00512 = "l2.frames_512";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_00512 = "l2.bytes_512";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_01024 = "l2.frames_1024";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_01024 = "l2.bytes_1024";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_01514 = "l2.frames_1514";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_01514 = "l2.bytes_1514";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_01518 = "l2.frames_1518";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_01518 = "l2.bytes_1518";
-const char * SODERO_REPORT_IDENT_ETHER_COUNT_jumbo= "l2.frames_jumbo";
-const char * SODERO_REPORT_IDENT_ETHER_BYTES_jumbo= "l2.bytes_jumbo";
-
-const char * SODERO_REPORT_IDENT_ETHER_ARP_COUNT = "l2.frames|l2_type|ARP";
-const char * SODERO_REPORT_IDENT_ETHER_ARP_BYTES = "l2.bytes|l2_type|ARP";
-const char * SODERO_REPORT_IDENT_ETHER_IPV4_COUNT = "l2.frames|l2_type|IPV4";
-const char * SODERO_REPORT_IDENT_ETHER_IPV4_BYTES = "l2.bytes|l2_type|IPV4";
-const char * SODERO_REPORT_IDENT_ETHER_IPV6_COUNT = "l2.frames|l2_type|IPV6";
-const char * SODERO_REPORT_IDENT_ETHER_IPV6_BYTES = "l2.bytes|l2_type|IPV6";
-const char * SODERO_REPORT_IDENT_ETHER_LACP_COUNT = "l2.frames|l2_type|LACP";
-const char * SODERO_REPORT_IDENT_ETHER_LACP_BYTES = "l2.bytes|l2_type|LACP";
-const char * SODERO_REPORT_IDENT_ETHER_MPLS_COUNT = "l2.frames|l2_type|MPLS";
-const char * SODERO_REPORT_IDENT_ETHER_MPLS_BYTES = "l2.bytes|l2_type|MPLS";
-const char * SODERO_REPORT_IDENT_ETHER_RSTP_COUNT = "l2.frames|l2_type|STP";
-const char * SODERO_REPORT_IDENT_ETHER_RSTP_BYTES = "l2.bytes|l2_type|STP";
-const char * SODERO_REPORT_IDENT_ETHER_OTHER_COUNT = "l2.frames|l2_type|Others";
-const char * SODERO_REPORT_IDENT_ETHER_OTHER_BYTES = "l2.bytes|l2_type|Others";
-
-const char * SODERO_REPORT_IDENT_ETHER_OUTGOING_COUNT = "l2.req_frames";
-const char * SODERO_REPORT_IDENT_ETHER_OUTGOING_BYTES = "l2.req_frames";
-const char * SODERO_REPORT_IDENT_ETHER_INCOMING_COUNT = "l2.rsp_frames";
-const char * SODERO_REPORT_IDENT_ETHER_INCOMING_BYTES = "l2.rsp_bytes" ;
-
-const char * SODERO_REPORT_IDENT_IPV4_COUNT = "l3.pkts";	//	"ipv4.packet.count";
-const char * SODERO_REPORT_IDENT_IPV4_BYTES = "l3.bytes";	//	"ipv4.packet.bytes";
-
-const char * SODERO_REPORT_IDENT_IPV4_ICMP_COUNT = "l3.pkts|l3_type|ICMP";
-const char * SODERO_REPORT_IDENT_IPV4_ICMP_BYTES = "l3.bytes|l3_type|ICMP";
-const char * SODERO_REPORT_IDENT_IPV4_TCP_COUNT = "l3.pkts|l3_type|TCP";
-const char * SODERO_REPORT_IDENT_IPV4_TCP_BYTES = "l3.bytes|l3_type|TCP";
-const char * SODERO_REPORT_IDENT_IPV4_UDP_COUNT = "l3.pkts|l3_type|UDP";
-const char * SODERO_REPORT_IDENT_IPV4_UDP_BYTES = "l3.bytes|l3_type|UDP";
-const char * SODERO_REPORT_IDENT_IPV4_OTHER_COUNT = "l3.pkts|l3_type|Others";
-const char * SODERO_REPORT_IDENT_IPV4_OTHER_BYTES = "l3.bytes|l3_type|Others";
-
-const char * SODERO_REPORT_IDENT_ICMP_COUNT = "";	//	"tcp.packet.count";
-const char * SODERO_REPORT_IDENT_ICMP_BYTES = "";	//	"tcp.packet.bytes";
-const char * SODERO_REPORT_IDENT_TCP_COUNT = "";	//	"tcp.packet.count";
-const char * SODERO_REPORT_IDENT_TCP_BYTES = "";	//	"tcp.packet.bytes";
-const char * SODERO_REPORT_IDENT_UDP_COUNT = "";	//	"tcp.packet.count";
-const char * SODERO_REPORT_IDENT_UDP_BYTES = "";	//	"tcp.packet.bytes";
-const char * SODERO_REPORT_IDENT_SCTP_COUNT = "";	//	"sctp.packet.count";
-const char * SODERO_REPORT_IDENT_SCTP_BYTES = "";	//	"sctp.packet.bytes";
-
-const char * SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT = "tcp.connected";
-const char * SODERO_REPORT_IDENT_TCP_CLOSED_COUNT    = "tcp.closed"   ;
-
-const char * SODERO_REPORT_IDENT_TCP_OUTGOING_COUNT  = "tcp.req_pkts" ;
-const char * SODERO_REPORT_IDENT_TCP_OUTGOING_BYTES  = "tcp.req_bytes";
-const char * SODERO_REPORT_IDENT_TCP_INCOMING_COUNT  = "tcp.rsp_pkts" ;
-const char * SODERO_REPORT_IDENT_TCP_INCOMING_BYTES  = "tcp.rsp_bytes";
-const char * SODERO_REPORT_IDENT_UDP_OUTGOING_COUNT  = "udp.req_pkts" ;
-const char * SODERO_REPORT_IDENT_UDP_OUTGOING_BYTES  = "udp.req_bytes";
-const char * SODERO_REPORT_IDENT_UDP_INCOMING_COUNT  = "udp.rsp_pkts" ;
-const char * SODERO_REPORT_IDENT_UDP_INCOMING_BYTES  = "udp.rsp_bytes";
-
-const char * SODERO_REPORT_IDENT_HTTP_REQUEST           = "http.reqs" ;
-const char * SODERO_REPORT_IDENT_HTTP_REQUEST_COUNT     = "http.req_pkts" ;
-const char * SODERO_REPORT_IDENT_HTTP_REQUEST_BYTES     = "http.req_bytes";
-const char * SODERO_REPORT_IDENT_HTTP_REQUEST_L2_BYTES  = "http.req_l2_bytes";
-const char * SODERO_REPORT_IDENT_HTTP_RESPONSE          = "http.rsps";
-const char * SODERO_REPORT_IDENT_HTTP_RESPONSE_COUNT    = "http.rsp_pkts" ;
-const char * SODERO_REPORT_IDENT_HTTP_RESPONSE_BYTES    = "http.rsp_bytes";
-const char * SODERO_REPORT_IDENT_HTTP_RESPONSE_L2_BYTES = "http.rsp_l2_bytes";
-
-const char * SODERO_REPORT_IDENT_HTTP_INCOMING_COUNT  = "http.req_pkts" ;
-const char * SODERO_REPORT_IDENT_HTTP_INCOMING_BYTES  = "http.req_bytes";
-const char * SODERO_REPORT_IDENT_HTTP_INCOMING_L2_BYTE= "http.req_l2_bytes";
-const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_COUNT  = "http.rsp_pkts" ;
-const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_BYTES  = "http.rsp_bytes";
-const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_L2_BYTE= "http.rsp_l2_bytes";
-
-const char * SODERO_REPORT_IDENT_HTTP_METHOD = "http.method"   ;
-const char * SODERO_REPORT_IDENT_HTTP_ERROR  = "http.error"    ;
-const char * SODERO_REPORT_IDENT_HTTP_RTT    = "http.rtt";
-
-const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_COUNT     = "mysql.req_pkts" ;
-const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_BYTES     = "mysql.req_bytes";
-const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_L2_BYTES  = "mysql.req_l2_bytes";
-const char * SODERO_REPORT_IDENT_MYSQL_RESPONSE_COUNT    = "mysql.rsp_pkts" ;
-const char * SODERO_REPORT_IDENT_MYSQL_RESPONSE_BYTES    = "mysql.rsp_bytes";
-const char * SODERO_REPORT_IDENT_MYSQL_RESPONSE_L2_BYTES = "mysql.rsp_l2_bytes";
-
-const char * SODERO_REPORT_IDENT_MYSQL_COMMAND = "mysql.reqs";
-const char * SODERO_REPORT_IDENT_MYSQL_BLOCK   = "mysql.blocks";
-const char * SODERO_REPORT_IDENT_MYSQL_RTT     = "mysql.rtt";
-
-const char * SODERO_REPORT_IDENT_DNS_REQUEST_COUNT  = "dns.req_pkts" ;
-const char * SODERO_REPORT_IDENT_DNS_REQUEST_BYTES  = "dns.req_bytes";
-const char * SODERO_REPORT_IDENT_DNS_RESPONSE_COUNT  = "dns.rsp_pkts" ;
-const char * SODERO_REPORT_IDENT_DNS_RESPONSE_BYTES  = "dns.rsp_bytes";
-
-const char * SODERO_REPORT_IDENT_DNS_OUTGOING_TRUNCS  = "dns.req_truncs";
-const char * SODERO_REPORT_IDENT_DNS_INCOMING_TRUNCS  = "dns.rsp_truncs";
-const char * SODERO_REPORT_IDENT_DNS_OUTGOING_OCODES  = "dns.req_opcodes|dns_opcode|%u";
-const char * SODERO_REPORT_IDENT_DNS_INCOMING_OCODES  = "dns.rsp_rcodes|dns_rcode|%u";
-
-const char * SODERO_REPORT_IDENT_DNS_OUTGOING_ERROR   = "dns.rsp_errors";
-const char * SODERO_REPORT_IDENT_DNS_INCOMING_TIMEOUT = "dns.req_timeout";
-
-const char * SODERO_REPORT_IDENT_DNS_INCOMING_DURATION = "dns.rtt";
-
-const char * sodero_ident_ipv4_count(int proto) {
-	switch(proto) {
-	case IPv4_TYPE_ICMP:
-		return SODERO_REPORT_IDENT_ICMP_COUNT;
-	case IPv4_TYPE_TCP:
-		return SODERO_REPORT_IDENT_TCP_COUNT;
-	case IPv4_TYPE_UDP:
-		return SODERO_REPORT_IDENT_UDP_COUNT;
-	case IPv4_TYPE_SCTP:
-		return SODERO_REPORT_IDENT_SCTP_COUNT;
-	}
-	return nullptr;
-}
-
-const char * sodero_ident_ipv4_bytes(int proto) {
-	switch(proto) {
-	case IPv4_TYPE_ICMP:
-		return SODERO_REPORT_IDENT_ICMP_BYTES;
-	case IPv4_TYPE_TCP:
-		return SODERO_REPORT_IDENT_TCP_BYTES;
-	case IPv4_TYPE_UDP:
-		return SODERO_REPORT_IDENT_UDP_BYTES;
-	case IPv4_TYPE_SCTP:
-		return SODERO_REPORT_IDENT_SCTP_BYTES;
-	}
-	return nullptr;
-}
-
-long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNodeValue v, unsigned long long * metricCount) {
-#ifdef __EXPORT_REPORT__
-	dumpNode(index, k, v);
-#endif
-	if (k->ip.l.ip) {
-		if (isGIPv4(k->ip.l)) return 0;
-	}
-
-	if (count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL) > 0) {
-		//	Node
-		sodero_report_node(k, nullptr, SODERO_NODES);
-
-		//	L2
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES, bytes_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL), metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00064, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00064), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00064, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00064), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00128, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00128), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00128, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00128), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00256, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00256), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00256, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00256), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00512, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00512), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00512, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00512), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_01024, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_01024), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_01024, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_01024), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_01514, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_01514), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_01514, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_01514), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_01518, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_01518), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_01518, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_01518), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_jumbo, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_JUMBO), metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_jumbo, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_JUMBO), metricCount);
-
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_INCOMING_COUNT, v->l2.total.incoming.total.count, metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_INCOMING_BYTES, v->l2.total.incoming.total.bytes, metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OUTGOING_COUNT, v->l2.total.incoming.total.count, metricCount);
-//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OUTGOING_BYTES, v->l2.total.incoming.total.bytes, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BCAST_COUNT, count_of_datum(&v->l2.bcast), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BCAST_BYTES, bytes_of_datum(&v->l2.bcast), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MCAST_COUNT, count_of_datum(&v->l2.mcast), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MCAST_BYTES, bytes_of_datum(&v->l2.mcast), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_UCAST_COUNT, count_of_datum(&v->l2.ucast), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_UCAST_BYTES, bytes_of_datum(&v->l2.ucast), metricCount);
-
-		//	L2|l2_type
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_ARP_COUNT  , count_of_datum(&v->l2.arp  ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_ARP_BYTES  , bytes_of_datum(&v->l2.arp  ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV4_COUNT , count_of_datum(&v->l2.ipv4 ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV4_BYTES , bytes_of_datum(&v->l2.ipv4 ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV6_COUNT , count_of_datum(&v->l2.ipv6 ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV6_BYTES , bytes_of_datum(&v->l2.ipv6 ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_LACP_COUNT , count_of_datum(&v->l2.lacp ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_LACP_BYTES , bytes_of_datum(&v->l2.lacp ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MPLS_COUNT , count_of_datum(&v->l2.mpls ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MPLS_BYTES , bytes_of_datum(&v->l2.mpls ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_RSTP_COUNT , count_of_datum(&v->l2.rstp ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_RSTP_BYTES , bytes_of_datum(&v->l2.rstp ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OTHER_COUNT, count_of_datum(&v->l2.other), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OTHER_BYTES, bytes_of_datum(&v->l2.other), metricCount);
-
-		//	L3
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_COUNT, count_of_datum(&v->l3.total), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_BYTES, count_of_datum(&v->l3.total), metricCount);
-
-		//	L3|l3_type
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_ICMP_COUNT , count_of_datum(&v->l3.icmp ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_ICMP_BYTES , bytes_of_datum(&v->l3.icmp ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_TCP_COUNT  , count_of_datum(&v->l3.tcp  ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_TCP_BYTES  , bytes_of_datum(&v->l3.tcp  ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_UDP_COUNT  , count_of_datum(&v->l3.udp  ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_UDP_BYTES  , bytes_of_datum(&v->l3.udp  ), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_OTHER_COUNT, count_of_datum(&v->l3.other), metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_OTHER_BYTES, bytes_of_datum(&v->l3.other), metricCount);
-
-		// L4
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_OUTGOING_COUNT  , v->l3.tcp.outgoing.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_OUTGOING_BYTES  , v->l3.tcp.outgoing.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_INCOMING_COUNT  , v->l3.tcp.incoming.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_INCOMING_BYTES  , v->l3.tcp.incoming.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_OUTGOING_COUNT  , v->l3.udp.outgoing.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_OUTGOING_BYTES  , v->l3.udp.outgoing.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_INCOMING_COUNT  , v->l3.udp.incoming.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_INCOMING_BYTES  , v->l3.udp.incoming.bytes, metricCount);
-
-		if (isExportVerbose())
-			printf("Report %p TCP Connect %u Disconntect %u\n", v,
-				v->counter.tcp.outgoing.connectedCount + v->counter.tcp.incoming.connectedCount,
-				v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT, v->counter.tcp.outgoing.connectedCount   + v->counter.tcp.incoming.connectedCount  , metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CLOSED_COUNT   , v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount, metricCount);
-
-		//	L7
-		//	HTTP
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST , v->l4.http.outgoing.action, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE, v->l4.http.incoming.action, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_COUNT , v->l4.http.outgoing.value.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_BYTES , v->l4.http.outgoing.value.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_COUNT, v->l4.http.incoming.value.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_BYTES, v->l4.http.incoming.value.bytes, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_L2_BYTES , v->l4.http.outgoing.l2, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_L2_BYTES, v->l4.http.incoming.l2, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_METHOD, v->l4.http.outgoing.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_ERROR , v->l4.http.incoming.count, metricCount);
-
-		unsigned long long rttValue = v->l4.http.incoming.rttValue + v->l4.http.outgoing.rttValue;
-		unsigned int       rttCount = v->l4.http.incoming.rttCount + v->l4.http.outgoing.rttCount;
-		if (rttCount)
-			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RTT, rttValue / rttCount, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_REQUEST_COUNT  , v->l4.dns.incoming.request .value.count + v->l4.dns.outgoing.request .value.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_REQUEST_BYTES  , v->l4.dns.incoming.request .value.bytes + v->l4.dns.outgoing.request .value.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_RESPONSE_COUNT , v->l4.dns.incoming.response.value.count + v->l4.dns.outgoing.response.value.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_RESPONSE_BYTES , v->l4.dns.incoming.response.value.bytes + v->l4.dns.outgoing.response.value.bytes, metricCount);
-
-		//	MySQL
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_COUNT , v->l4.mysql.outgoing.value.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_BYTES , v->l4.mysql.outgoing.value.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RESPONSE_COUNT, v->l4.mysql.incoming.value.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RESPONSE_BYTES, v->l4.mysql.incoming.value.bytes, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_L2_BYTES , v->l4.mysql.outgoing.l2, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RESPONSE_L2_BYTES, v->l4.mysql.incoming.l2, metricCount);
-
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_COMMAND, v->l4.mysql.outgoing.count, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_BLOCK  , v->l4.mysql.incoming.block, metricCount);
-
-		rttValue = v->l4.mysql.incoming.rttValue + v->l4.mysql.outgoing.rttValue;
-		rttCount = v->l4.mysql.incoming.rttCount + v->l4.mysql.outgoing.rttCount;
-		if (rttCount)
-			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RTT, rttValue / rttCount, metricCount);
-
-		//	DNS
-		for (int i = 0; i < 3; i++)
-			SODERO_REPORT_GROUP(k, SODERO_REPORT_IDENT_DNS_OUTGOING_OCODES, i, v->l4.dns.incoming.request .codes.o.codes[i], metricCount);
-		int errorCount = 0;
-		for (int i = 0; i < 6; i++) {
-			if (i > 0) {
-//				iError += v->l4.dns.incoming.response.codes.r.codes[i];
-//				oError += v->l4.dns.outgoing.response.codes.r.codes[i];
-				errorCount += v->l4.dns.outgoing.response.codes.r.codes[i];
-			}
-			SODERO_REPORT_GROUP(k, SODERO_REPORT_IDENT_DNS_INCOMING_OCODES, i, v->l4.dns.outgoing.request .codes.r.codes[i], metricCount);
-		}
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_OUTGOING_ERROR, errorCount, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_INCOMING_TIMEOUT, v->l4.dns.incoming.timeout + v->l4.dns.outgoing.timeout, metricCount);
-
-		TSoderoUnitDatum duration = {
-				v->l4.dns.incoming.duration.count + v->l4.dns.outgoing.duration.count,
-				{{v->l4.dns.incoming.duration.sum + v->l4.dns.outgoing.duration.sum,
-				v->l4.dns.incoming.duration.max + v->l4.dns.outgoing.duration.max,
-				v->l4.dns.incoming.duration.min + v->l4.dns.outgoing.duration.min}}
-		};
-		SODERO_REPORT_DATUM(k, SODERO_REPORT_IDENT_DNS_INCOMING_DURATION, duration, metricCount);
-	}
-	return 0;
-}
-
-long map_service_report_handlor(PSoderoMap container, int index, PServiceIndex k, PSoderoDoubleDatum v, unsigned long long * metricCount) {
-	if (k->node.ip.l.ip) {
-		if (isGIPv4(k->node.ip.l)) return 0;
-	}
-
-	char name[256];
-	snprintf(name, sizeof(name)-1, "tcp.req_pkts|l4_group|%hu", (unsigned short) k->port);
-	SODERO_REPORT_VALUE(&k->node, name, v->outgoing.count, metricCount);
-	snprintf(name, sizeof(name)-1, "tcp.req_bytes|l4_group|%hu", (unsigned short) k->port);
-	SODERO_REPORT_VALUE(&k->node, name, v->outgoing.bytes, metricCount);
-	snprintf(name, sizeof(name)-1, "tcp.rsp_pkts|l4_group|%hu", (unsigned short) k->port);
-	SODERO_REPORT_VALUE(&k->node, name, v->incoming.count, metricCount);
-	snprintf(name, sizeof(name)-1, "tcp.rsp_bytes|l4_group|%hu", (unsigned short) k->port);
-	SODERO_REPORT_VALUE(&k->node, name, v->incoming.bytes, metricCount);
-
-	return 0;
-}
-
-#ifdef __NO_CYCLE__
-long session_manager_handlor(PSoderoSessionManager container, int index, PSoderoSession object, void * data) {
-	return sodero_report_session(object, SODERO_REPORT_WAY_BODY);
-}
-#endif
-
-int sodero_send(PSoderoPeriodResult result
-#ifdef __NO_CYCLE__
-		, PSoderoSessionManager manager
-#endif
-		) {
-	unsigned long long metricCount = 0;
-
-#ifdef __NO_CYCLE__
-	if (sodero_session_foreach(manager, (TSessionTimeoutHandlor) session_manager_handlor, nullptr) < 0) return false;
-#endif
-	if (sodero_map_foreach(result->nodes.items, (TforeachMapHandlor)map_node_report_handlor   , &metricCount) < 0) return false;
-	if (sodero_map_foreach(result->nodes.ports, (TforeachMapHandlor)map_service_report_handlor, &metricCount) < 0) return false;
-
-	sodero_report_finished(metricCount);
-	return true;
-}
-
-void sodero_report_result(PSoderoPeriodResult result
-#ifdef __NO_CYCLE__
-		, PSoderoSessionManager manager
-#endif
-		) {
-	if (!result) return;
-
-	gReportCounter = result->time / uSecsPerSec;
-
-#ifdef __REPORT_DIRECT__
-
-#else
-#ifndef __SKIP_REPORT__
-	do {
-		if (!sodero_report_check()) {
-			printf("Can't connect to server\n");
-			break;
-		}
-
-		long long b = now();
-#ifndef __SKIP_WRITE__
-		if (!sodero_send(result
-#ifdef __NO_CYCLE__
-				, manager
-#endif
-				)) {
-			printf("Can't send report to server\n");
-			sodero_report_disconnect();
-			break;
-		}
-#endif
-		reset_period_result(result);
-		long long e = now();
-
-		if (gT)
-		printf("Report time %.3fs send %llu/%u recv %llu/%u Data %.3fs %llu/%u\n",
-				1e-6*(gO + e-b), gReportSend.bytes, gReportSend.count, gReportRecv.bytes, gReportRecv.count,
-				1e-6*(gT      ), gCurrent.bytes, gCurrent.count);
-		gReportSend.bytes = 0;
-		gReportSend.count = 0;
-		gCurrent.bytes = 0;
-		gCurrent.count = 0;
-		gT = 0;
-		gO = 0;
-	} while (false);
-#endif
-
-#endif
-	gB = now();
-}
-
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-
-int sodero_xdr_message(int * fd, TSoderoReportMsg * message) {
-	XDR xdr;
-	char buffer[XDR_BUFFER_SIZE];
-	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
-	if (xdr_TSoderoReportMsg(&xdr, message)) {
-		int length = xdr_getpos(&xdr);
-		gTraffic += length;
-		return write2socket(fd, buffer, length, false);
-	}
-	return false;
-}
-
-int sodero_report_flow_head(PSoderoPortSession value, int flag) {
-	if (value) {
-//		printf("Report FLOW Head: %p\n", value);
-
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * session = &report->TSoderoReportMsg_u.session_event;
-		switch(value->key.proto) {
-		case IPv4_TYPE_TCP:
-			session->event = EVENT_TYPE_TCP_OPEN;
-			break;
-		case IPv4_TYPE_UDP:
-			session->event = EVENT_TYPE_UDP_OPEN;
-			break;
-		}
-
-//		printf("Head %s event %d %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n", ipv4_proto_name(value->key.proto), session->event,
-//				value->key.s[0], value->key.s[1], value->key.s[2], value->key.s[3], ntohs(value->key.sourPort),
-//				value->key.d[0], value->key.d[1], value->key.d[2], value->key.d[3], ntohs(value->key.destPort));
-
-		TSoderoSessionContent * content = &session->session_content;
-		content->type = SESSION_TYPE_FLOW_HEAD;
-
-		TSoderoFLOWSessionHead * record = &content->TSoderoSessionContent_u.flow_head;
-
-		record->flow_sessin_id = value->id;
-		record->age = value->e > value->b ? (value->e - value->b) / uSecsPerMSec : 0;
-		record->connect_time = value->b / uSecsPerSec;
-		record->vlan = value->eth.vlan;
-//		*(PMAC)record->client_mac = value->eth.sour;
-		memcpy(record->client_mac, &value->eth.sour, sizeof(value->eth.sour));
-//		*(PMAC)record->server_mac = value->eth.dest;
-		memcpy(record->server_mac, &value->eth.dest, sizeof(value->eth.dest));
-//		*(unsigned int *)record->client_ip = value->key.sourIP;
-		memcpy(record->client_ip, &value->key.sourIP, sizeof(value->key.sourIP));
-//		*(unsigned int *)record->server_ip = value->key.destIP;
-		memcpy(record->server_ip, &value->key.destIP, sizeof(value->key.destIP));
-		record->client_port = value->key.sourPort;
-		record->server_port = value->key.destPort;
-		record->identify = value->key.sequence;
-
-		record->l2_type = L2_TYPE_IPV4;
-		record->l3_type = value->key.proto;
-
-		if (isExportFlow(value->key.proto)) {
-			checkSessionValue(&value->key, REPORT_TYPE_HEAD, "report_type", report->type);
-			checkSessionValue(&value->key, REPORT_TYPE_HEAD, "content_type", content->type);
-			checkSessionValue(&value->key, REPORT_TYPE_HEAD, "session_event", session->event);
-			CHECK_SESSION_VALUE(REPORT_TYPE_HEAD, flow_sessin_id);
-			CHECK_SESSION_VALUE(REPORT_TYPE_HEAD, connect_time);
-			CHECK_SESSION_VALUE(REPORT_TYPE_HEAD, age);
-			CHECK_SESSION_VALUE(REPORT_TYPE_HEAD, vlan);
-		}
-		return sodero_xdr_message(&gSocket, report);
-	}
-	return false;
-}
-
-int sodero_report_flow_body(PSoderoPortSession value, int flag) {
-	if (value) {
-//		printf("Report FLOW Body: %p\n", value);
-
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * session = &report->TSoderoReportMsg_u.session_event;
-		if (flag)
-			switch(value->key.proto) {
-			case IPv4_TYPE_TCP:
-				session->event = EVENT_TYPE_TCP_CLOSE;
-				break;
-			case IPv4_TYPE_UDP:
-				session->event = EVENT_TYPE_UDP_CLOSE;
-				break;
-			}
-		TSoderoSessionContent * content = &session->session_content;
-		content->type = SESSION_TYPE_FLOW_BODY;
-
-//		printf("Body %s event %d %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d\n", ipv4_proto_name(value->key.proto), session->event,
-//				value->key.s[0], value->key.s[1], value->key.s[2], value->key.s[3], ntohs(value->key.sourPort),
-//				value->key.d[0], value->key.d[1], value->key.d[2], value->key.d[3], ntohs(value->key.destPort));
-
-		TSoderoFLOWSessionBody * record = &content->TSoderoSessionContent_u.flow_body;
-
-		record->flow_sessin_id = value->id;
-		record->client_bytes = value->traffic.outgoing.bytes;
-		record->server_bytes = value->traffic.incoming.bytes;
-		record->client_pkts  = value->traffic.outgoing.count;
-		record->server_pkts  = value->traffic.incoming.count;
-
-		record->client_l2_bytes = value->l2.outgoing;
-		record->server_l2_bytes = value->l2.incoming;
-
-		switch(value->key.proto) {
-			case IPPROTO_ICMP:
-//				PSoderoICMPSession  = (PSoderoICMPSession) value;
-				break;
-			case IPPROTO_TCP: {
-				PSoderoTCPSession x = (PSoderoTCPSession) value;
-				record->expired = x->state == SODERO_TCP_ESTABLISHED;
-				record->app = x->application;
-				record->major = x->major;
-				record->minor = x->minor;
-				record->client_abort = x->value.outgoing.rstCount;
-				record->server_abort = x->value.incoming.rstCount;
-
-				record->rttValue = x->value.outgoing.rttValue + x->value.incoming.rttValue;
-				record->rttCount = x->value.outgoing.rttCount + x->value.incoming.rttCount;
-
-				record->droppedCount    = x->value.outgoing.droppedCount    + x->value.incoming.droppedCount   ;
-				record->droppedBytes    = x->value.outgoing.droppedBytes    + x->value.incoming.droppedBytes   ;
-				record->reorderedCount  = x->value.outgoing.reorderedCount  + x->value.incoming.reorderedCount ;
-				record->reorderedBytes  = x->value.outgoing.reorderedBytes  + x->value.incoming.reorderedBytes ;
-				record->retransmitCount = x->value.outgoing.retransmitCount + x->value.incoming.retransmitCount;
-				record->retransmitBytes = x->value.outgoing.retransmitBytes + x->value.incoming.retransmitBytes;
-				record->streamBytes     = x->value.outgoing.streamBytes     + x->value.incoming.streamBytes    ;
-				record->missedBytes     = x->value.outgoing.missedBytes     + x->value.incoming.missedBytes    ;
-
-				record->client_rtos = SODERO_SAFE_RATE(x->value.outgoing, rtt);
-				record->client_zwnds = x->value.outgoing.zwnds;
-				record->client_nagle_delays = x->value.outgoing.nagle_delays;
-				record->client_rcv_wnd_throttles = x->value.outgoing.rcv_wnd_throttles;
-
-				record->server_rtos = SODERO_SAFE_RATE(x->value.incoming, rtt);
-				record->server_zwnds = x->value.incoming.zwnds;
-				record->server_nagle_delays = x->value.incoming.nagle_delays;
-				record->server_rcv_wnd_throttles = x->value.incoming.rcv_wnd_throttles;
-
-				record->turns = x->value.turns_count;
-				record->turns_sum_time = x->value.turns_sum_time;
-				record->turns_min_time = x->value.turns_min_time;
-				record->turns_max_time = x->value.turns_max_time;
-				record->turns_sum_interval = x->value.turns_sum_interval;
-				record->turns_min_interval = x->value.turns_min_interval;
-				record->turns_max_interval = x->value.turns_max_interval;
-				record->turns_sum_bytes = x->value.turns_sum_bytes;
-				record->turns_min_bytes = x->value.turns_min_bytes;
-				record->turns_max_bytes = x->value.turns_max_bytes;
-				break;
-			}
-			case IPPROTO_UDP: {
-//				PUDPSoderoSession  = (PSoderoUDPSession) value;
-				break;
-			}
-		}
-		if (isExportFlow(value->key.proto)) {
-			checkSessionValue(&value->key, REPORT_TYPE_BODY, "report_type", report->type);
-			checkSessionValue(&value->key, REPORT_TYPE_BODY, "content_type", content->type);
-			checkSessionValue(&value->key, REPORT_TYPE_BODY, "session_event", session->event);
-
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, flow_sessin_id);
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_bytes);
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_bytes);
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_pkts);
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_pkts);
-
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_l2_bytes);
-			CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_l2_bytes);
-
-			switch(value->key.proto) {
-				case IPPROTO_ICMP:
-					break;
-				case IPPROTO_TCP: {
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, expired);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_abort);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_abort);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, rttValue);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, rttCount);
-
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, droppedCount);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, droppedBytes);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, reorderedCount);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, reorderedBytes);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, retransmitCount);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, retransmitBytes);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, streamBytes);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, missedBytes);
-
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_rtos);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_zwnds);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_nagle_delays);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, client_rcv_wnd_throttles);
-
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_rtos);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_zwnds);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_nagle_delays);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, server_rcv_wnd_throttles);
-
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_sum_time);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_min_time);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_max_time);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_sum_interval);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_min_interval);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_max_interval);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_sum_bytes);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_min_bytes);
-					CHECK_SESSION_VALUE(REPORT_TYPE_BODY, turns_max_bytes);
-					break;
-				}
-				case IPPROTO_UDP: {
-					break;
-				}
-			}
-		}
-		return sodero_xdr_message(&gSocket, report);
-	}
-	return false;
-}
-
-int sodero_report_dns_application(PSoderoApplicationDNS value, int flag) {
-	int result = 0;
-	while (value) {
-		PSoderoUDPSession owner = value->owner;
-//		printf("Report DNS: %p\n", value);
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * session = &report->TSoderoReportMsg_u.session_event;
-		session->event = EVENT_TYPE_DNS;
-
-		TSoderoSessionContent * content = &session->session_content;
-		content->type = SESSION_TYPE_DNS;
-
-		TSoderoDNSSessionMsg * record = &content->TSoderoSessionContent_u.dns;
-
-		record->dns_session_id  = value->id;
-		record->flow_session_id = owner->id;
-
-		if (value->b) {
-			if (value->e) {
-				record->wait_time = (value->e - value->b) / uSecsPerMSec;
-				record->rtt       = (value->e - value->b) / uSecsPerMSec;
-			} else
-				record->req_timeout = true;
-		}
-
-		record->req_bytes     = value->traffic.outgoing.bytes;
-		record->req_pkts      = value->traffic.outgoing.count;
-		record->req_l2_bytes  = value->l2.outgoing;
-		record->rsp_bytes     = value->traffic.incoming.bytes;
-		record->rsp_pkts      = value->traffic.incoming.count;
-		record->rsp_l2_bytes  = value->l2.incoming;
-
-		record->rsp_truncated = value->truncated;
-		record->authoritative = value->authoritative;
-
-//		record->qname.qname_val = xdr_store_string(&data.event.data, value->query, &record->qname.qname_len);
-		SODERO_SAFE_TEXT(record, qname, value->query);
-//		record->qtype.qtype_val = xdr_store_string(&data.event.data, dns_t_name(value->type), &record->qtype.qtype_len);
-		SODERO_SAFE_TEXT(record, qtype, dns_t_name(value->type));
-
-		record->opcode = value->ocode;
-
-//		record->error.error_val = xdr_store_string(&data.event.data, dns_r_name(value->rcode), &record->error.error_len);
-		SODERO_SAFE_TEXT(record, error, dns_r_name(value->rcode));
-
-		if (value->data) {
-			PSoderoDNSAnswerEntry entries = (PSoderoDNSAnswerEntry) value->data;
-			record->answers.answers_len = value->answer;
-			record->answers.answers_val = (TSoderoDNSAnswer *)(data.event.data.buffer + data.event.data.offset);
-			data.event.data.offset += value->answer * sizeof(TSoderoDNSAnswer);
-			for (int i = 0; i < value->answer; i++) {
-				TSoderoDNSAnswer * answer = &record->answers.answers_val[i];
-				PSoderoDNSAnswerEntry entry = &entries[i];
-				answer->ttl = entry->time;
-//				answer->name.name_val = xdr_store_string(&data.event.data, value->data + entry->name, &answer->name.name_len);
-				SODERO_SAFE_TEXT(answer, name, value->data + entry->name);
-//				answer->type.type_val = xdr_store_string(&data.event.data, dns_t_name(entry->type), &answer->type.type_len);
-				SODERO_SAFE_TEXT(answer, type, dns_t_name(entry->type));
-//				answer->data.data_val = xdr_store_string(&data.event.data, value->data + entry->data, &answer->data.data_len);
-				SODERO_SAFE_TEXT(answer, data, value->data + entry->data);
-			}
-		}
-//		struct {
-//			u_int answers_len;
-//			TSoderoDNSAnswer *answers_val;
-//		} answers;
-
-		if (isExportReport()) {
-			printf("Report DNS: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu \n"
-					"\ttime %llu to %llu seq %u type %u ocode %u rcode %u domain %s\n",
-				owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
-				owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
-				owner->id, value->id, value->serial,
-				value->b, value->e, value->sequence, value->type, value->ocode, value->rcode, value->query);
-		}
-
-		if (isExportApplication(owner->key.proto, owner->flag)) {
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "report_type"  , report->type  );
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "content_type" , content->type );
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "session_event", session->event);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, dns_session_id );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, flow_session_id);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, wait_time   );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rtt         );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_timeout );
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_bytes   );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_pkts    );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_l2_bytes);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_bytes   );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_pkts    );
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_l2_bytes);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_truncated);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, authoritative);
-
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, qname);
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, qtype);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, opcode);
-
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, error);
-			for (int i = 0; i < record->answers.answers_len; i++) {
-				TSoderoDNSAnswer * answer = &record->answers.answers_val[i];
-				CHECK_APPLICATION_RECORD_VALUE (REPORT_TYPE_BODY, ttl , answer);
-				CHECK_APPLICATION_RECORD_STRING(REPORT_TYPE_BODY, name, answer);
-				CHECK_APPLICATION_RECORD_STRING(REPORT_TYPE_BODY, type, answer);
-				CHECK_APPLICATION_RECORD_STRING(REPORT_TYPE_BODY, data, answer);
-			}
-		}
-
-		if (sodero_xdr_message(&gSocket, report))
-			result++;
-
-//		value = value->link;
-		break;
-	}
-	return result;
-}
-
-int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag) {
-	int result = 0;
-	while (value) {
-		PSoderoTCPSession owner = value->owner;
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * msssage = &report->TSoderoReportMsg_u.session_event;
-		msssage->event = EVENT_TYPE_DB_MYSQL;
-
-		TSoderoSessionContent * content = &msssage->session_content;
-		content->type = SESSION_TYPE_MYSQL;
-
-		if (value->command == MYSQL_COM_SODERO_EXTEND) {
-			content->TSoderoSessionContent_u.mysql.type = MYSQL_TYPE_LOGIN;
-			TSoderoMySQLLoginMsg * record = & content->TSoderoSessionContent_u.mysql.login;
-			record->session_id = owner->id;
-			record->application_id = value->id;
-			record->reqTime = value->reqTime;
-			record->rspTime = value->rspTime;
-			SODERO_SAFE_TEXT(record, user, value->user);
-			SODERO_SAFE_TEXT(record, database, value->database);
-			record->status = value->status;
-
-			if (isExportReport()) {
-				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
-						"\ttime %llu to %llu status %u user %s database %s\n",
-					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
-					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
-					owner->id, value->id, value->serial,
-					value->reqTime, value->rspTime, value->status,
-					value->user ? value->user : "", value->database ? value->database : "");
-			}
-		} else {
-			content->TSoderoSessionContent_u.mysql.type = MYSQL_TYPE_COMMAND;
-			TSoderoMySQLCommandMsg * record = & content->TSoderoSessionContent_u.mysql.command;
-			record->session_id = owner->id;
-			record->application_id = value->id;
-			record->reqFirst = value->reqFirst;
-			record->reqLast = value->reqLast;
-			record->reqCount = value->traffic.outgoing.count;
-			record->reqBytes = value->traffic.outgoing.bytes;
-			record->rspCount = value->traffic.incoming.count;
-			record->rspBytes = value->traffic.incoming.bytes;
-			record->rspFirst  = value->rspFirst;
-			record->rspLast = value->rspLast;
-			record->row = value->row;
-			record->col = value->col;
-			record->set = value->set;
-
-			if (isExportReport()) {
-				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
-						"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
-					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
-					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
-					owner->id, value->id, value->serial,
-					value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
-			}
-		}
-
-		if(sodero_xdr_message(&gSocket, report))
-			result++;
-		//		value = value->link;
-		break;
-	}
-	return result;
-}
-
-int sodero_report_http_head(PSoderoApplicationHTTP value, int flag) {
-	int result = 0;
-	while (value) {
-		PSoderoTCPSession owner = value->owner;
-//		printf("Report HTTP: %p\n", value);
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * session = &report->TSoderoReportMsg_u.session_event;
-		session->event = EVENT_TYPE_HTTP_REQUEST;
-
-		TSoderoSessionContent * content = &session->session_content;
-		content->type = SESSION_TYPE_HTTP_HEAD;
-
-		TSoderoHTTPSessionHead * record = &content->TSoderoSessionContent_u.http_head;
-		record->http_session_id = value->id;
-		record->flow_session_id = value->owner->id;
-
-		snprintf((char*)record->method, sizeof(record->method) - 1, "%s", nameOfHTTPMethod(value->method_code));
-
-		SODERO_SAFE_TEXT(record, url, value->url);
-		SODERO_SAFE_TEXT(record, host, value->host);
-		SODERO_SAFE_TEXT(record, user_agent, value->ua);
-		SODERO_SAFE_TEXT(record, referer, value->referer);
-//		SODERO_SAFE_TEXT(record, origin, value->origin);
-//		SODERO_SAFE_TEXT(record, cookies, value->req_cookies);
-//		SODERO_SAFE_TEXT(record, req_sample, value->req_sample);
-
-		if (isExportApplication(owner->key.proto, owner->flag)) {
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "report_type", report->type);
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "content_type", content->type);
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "session_event", session->event);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, http_session_id);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, flow_session_id);
-
-			CHECK_APPLICATION_TEXT(REPORT_TYPE_BODY, method);
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, url);
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, host);
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, user_agent);
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, referer);
-//			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, origin);
-//			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, cookies);
-//			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, req_sample);
-		}
-
-		if (sodero_xdr_message(&gSocket, report))
-			result++;
-//		value = value->link;
-		break;
-	}
-	return result;
-}
-
-int sodero_report_http_body(PSoderoApplicationHTTP value, int flag) {
-	int result = 0;
-	while (value) {
-		PSoderoTCPSession owner = value->owner;
-//		printf("Report HTTP: %p\n", value);
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * session = &report->TSoderoReportMsg_u.session_event;
-		session->event = EVENT_TYPE_HTTP_RESPONSE;
-
-		TSoderoSessionContent * content = &session->session_content;
-		content->type = SESSION_TYPE_HTTP_BODY;
-
-		TSoderoHTTPSessionBody * record = &content->TSoderoSessionContent_u.http_body;
-		record->http_session_id = value->id;
-//		SODERO_SAFE_TEXT(record, title, value->title);
-		SODERO_SAFE_TEXT(record, content_type, value->rsp_content_type);
-
-//		record-> dns_time;
-		if (value->req_e && value->req_b)
-			record->req_time  = (value->req_e - value->req_b) / uSecsPerMSec;
-		if (value->rsp_e && value->rsp_b)
-			record->rsp_time  = (value->rsp_e - value->rsp_b) / uSecsPerMSec;
-		if (value->rsp_b && value->req_e)
-			record->wait_time  = (value->rsp_b - value->req_e) / uSecsPerMSec;
-
-		record->req_bytes    = value->req_bytes   ;
-		record->req_pkts     = value->req_pkts    ;
-		record->req_l2_bytes = value->req_l2_bytes;
-		record->req_rtos     = SODERO_SAFE_DIV(value->reqRTTValue, value->reqRTTCount);
-		record->rsp_bytes    = value->rsp_bytes   ;
-		record->rsp_pkts     = value->rsp_pkts    ;
-		record->rsp_l2_bytes = value->rsp_l2_bytes;
-		record->rso_rtos     = SODERO_SAFE_DIV(value->rspRTTValue, value->rspRTTCount);
-		record->rttValue = value->reqRTTValue + value->rspRTTValue;
-		record->rttCount = value->reqRTTCount + value->rspRTTCount;
-
-		record->status_code    = value->status_code   ;
-		record->pipelined      = value->pipelined     ;
-		record->req_aborted    = value->req_aborted   ;
-		record->rsp_aborted    = value->rsp_aborted   ;
-		record->rsp_chunked    = value->rsp_chunked   ;
-		record->rsp_compressed = value->rsp_compressed;
-
-		snprintf((char*)record->rsp_version, sizeof(record->rsp_version) - 1, "HTTP/1.%d", value->rsp_version);
-
-		if (flag & SODERO_REPORT_DONE)
-		if (isExportReport()) {
-			printf("Report - HTTP: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu ttime req %llu to %llu rep %llu to %llu\n",
-				owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
-				owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
-				owner->id, value->id, value->serial,
-				value->req_b, value->req_e, value->rsp_b, value->rsp_e);
-
-			if (value->host)
-				printf("HOST: %s\n", value->host);
-			if (value->url)
-				printf("URL: %s\n", value->url);
-			if (value->ua)
-				printf("ua: %s\n", value->ua);
-			if (value->referer)
-				printf("referer: %s\n", value->referer);
-		}
-
-		if (isExportApplication(owner->key.proto, owner->flag)) {
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "report_type", report->type);
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "content_type", content->type);
-			checkSessionValue(&owner->key, REPORT_TYPE_BODY, "session_event", session->event);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, http_session_id);
-
-//			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, title);
-			CHECK_APPLICATION_STRING(REPORT_TYPE_BODY, content_type);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_time);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_time);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, wait_time);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_bytes);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_pkts);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_l2_bytes);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_rtos);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_bytes);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_pkts);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_l2_bytes);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rso_rtos);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rttValue);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rttCount);
-
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, status_code);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, pipelined);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, req_aborted);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_aborted);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_chunked);
-			CHECK_APPLICATION_VALUE(REPORT_TYPE_BODY, rsp_compressed);
-
-			CHECK_APPLICATION_TEXT(REPORT_TYPE_BODY, rsp_version);
-		}
-
-		if (sodero_xdr_message(&gSocket, report))
-			result++;
-//		value = value->link;
-		break;
-	}
-	return result;
-}
-
-int sodero_report_arp_event(PSoderoARPEvent session, unsigned long time) {
-	TXDREventBuffer data;
-	bzero(&data.event, sizeof(data.event));
-	data.event.data.length = sizeof(data) - sizeof(data.event);
-
-	TSoderoReportMsg * report = &data.event.message;
-	report->type = SESSION_EVENT;
-
-	TSoderoSessionMsg * msssage = &report->TSoderoReportMsg_u.session_event;
-	msssage->event = EVENT_TYPE_ARP;
-
-	TSoderoSessionContent * content = &msssage->session_content;
-	content->type = SESSION_TYPE_ARP;
-
-	TSoderoARPThing * record = &content->TSoderoSessionContent_u.arp;
-	record->time  = time;
-	record->code  = session->opcode;
-//	record->senderMAC = session->senderMAC.bytes;
-	memcpy(record->client_mac, &session->senderMAC, sizeof(TMAC));
-	memcpy(record->client_ip, &session->senderIP.ip, sizeof(session->senderIP.ip));
-	memcpy(record->server_mac, &session->targetMAC, sizeof(TMAC));
-	memcpy(record->server_ip, &session->targetIP.ip, sizeof(session->targetIP.ip));
-
-	return sodero_xdr_message(&gSocket, report);
-}
-
-int sodero_report_icmp_event(PSoderoICMPEvent session, unsigned long time) {
-	TXDREventBuffer data;
-	bzero(&data.event, sizeof(data.event));
-	data.event.data.length = sizeof(data) - sizeof(data.event);
-
-	TSoderoReportMsg * report = &data.event.message;
-	report->type = SESSION_EVENT;
-
-	TSoderoSessionMsg * msssage = &report->TSoderoReportMsg_u.session_event;
-	msssage->event = EVENT_TYPE_ICMP;
-
-	TSoderoSessionContent * content = &msssage->session_content;
-	content->type = SESSION_TYPE_ICMP;
-
-	content->TSoderoSessionContent_u.icmp.type = ICMP_TYPE_EVENT;
-	TSoderoICMPThing * record = &content->TSoderoSessionContent_u.icmp.thing;
-	record->time = time;
-	record->code = session->code;
-	record->proto = session->info.proto;
-	memcpy(record->client_ip, &session->info.sourIP, sizeof(session->info.sourIP));
-	memcpy(record->server_ip, &session->info.destIP, sizeof(session->info.destIP));
-	record->client_port = session->info.sourPort;
-	record->server_port = session->info.destPort;
-	return sodero_xdr_message(&gSocket, report);
-}
-
-int sodero_report_icmp_session(PSoderoICMPSession session, int way) {
-
-	if (way & SODERO_REPORT_DONE) {
-		TXDREventBuffer data;
-		bzero(&data.event, sizeof(data.event));
-		data.event.data.length = sizeof(data) - sizeof(data.event);
-
-		TSoderoReportMsg * report = &data.event.message;
-		report->type = SESSION_EVENT;
-
-		TSoderoSessionMsg * msssage = &report->TSoderoReportMsg_u.session_event;
-		msssage->event = EVENT_TYPE_ICMP;
-
-		TSoderoSessionContent * content = &msssage->session_content;
-		content->type = SESSION_TYPE_ICMP;
-
-		content->TSoderoSessionContent_u.icmp.type = ICMP_TYPE_SESSION;
-		TSoderoICMPMsg * record = &content->TSoderoSessionContent_u.icmp.msg;
-
-		record->id = session->id;
-		memcpy(record->client_ip, &session->key.sourIP, sizeof(session->key.sourIP));
-		memcpy(record->server_ip, &session->key.destIP, sizeof(session->key.destIP));
-		record->reqTime  = session->b;
-		record->rspTime  = session->e;
-		record->identify = session->value.echo.identify;
-		record->sequence = session->value.echo.sequence;
-		record->incoming = session->traffic.incoming.bytes;
-		record->outgoing = session->traffic.outgoing.bytes;
-
-		return sodero_xdr_message(&gSocket, report);
-	}
-	return true;
-}
-
-#else
-
-int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
-	XDR xdr;
-	char buffer[XDR_BUFFER_SIZE];
-	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
-	if (xdr_TSoderoTCPReportMsg(&xdr, message)) {
-		int length = xdr_getpos(&xdr);
-		gTCPBytes += length;
-		return write2socket(fd, buffer, length, IPPROTO_TCP);
-	}
-	return false;
 }
 
 int sodero_report_flow_head(PSoderoPortSession value, int flag) {
@@ -2282,6 +834,78 @@ int sodero_report_dns_application(PSoderoApplicationDNS value, int flag) {
 	return result;
 }
 
+int sodero_report_tns_application(PSoderoTnsApplication value, int flag) {
+	int result = 0;
+	while (value) {
+		PSoderoTCPSession owner = value->owner;
+		TXDREventBuffer data;
+		bzero(&data.event, sizeof(data.event));
+		data.event.data.length = sizeof(data) - sizeof(data.event);
+
+		TSoderoTCPReportMsg * report = &data.event.message;
+		report->type = SESSION_EVENT;
+
+		TSoderoSessionMsg * msssage = &report->TSoderoTCPReportMsg_u.session_event;
+		msssage->event = EVENT_TYPE_DB_ORACLE;
+
+		TSoderoTCPSessionContent * content = &msssage->session_content;
+		content->type = SESSION_TYPE_ORACLE;
+
+		if (value->command == 1) {
+			content->TSoderoTCPSessionContent_u.tns.type = MYSQL_TYPE_LOGIN;
+			TSoderoTnsLoginMsg * record = & content->TSoderoTCPSessionContent_u.tns.login;
+			record->session_id = owner->id;
+			record->application_id = value->id;
+			record->reqTime = value->reqTime;
+			record->rspTime = value->rspTime;
+			SODERO_SAFE_TEXT(record, user, value->user);
+			SODERO_SAFE_TEXT(record, database, value->database);
+			record->status = value->status;
+
+			if (isExportReport()) {
+				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						"\ttime %llu to %llu status %u user %s database %s\n",
+					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+					owner->id, value->id, value->serial,
+					value->reqTime, value->rspTime, value->status,
+					value->user ? value->user : "", value->database ? value->database : "");
+			}
+		} else {
+			content->TSoderoTCPSessionContent_u.tns.type = TNS_TYPE_COMMAND;
+			TSoderoTnsCommandMsg * record = & content->TSoderoTCPSessionContent_u.tns.command;
+			record->session_id = owner->id;
+			record->application_id = value->id;
+			record->reqFirst = value->reqFirst;
+			record->reqLast = value->reqLast;
+			record->reqCount = value->traffic.outgoing.count;
+			record->reqBytes = value->traffic.outgoing.bytes;
+			record->rspCount = value->traffic.incoming.count;
+			record->rspBytes = value->traffic.incoming.bytes;
+			record->rspFirst  = value->rspFirst;
+			record->rspLast = value->rspLast;
+			record->row = value->row;
+			record->col = value->col;
+			record->set = value->set;
+
+			if (isExportReport()) {
+				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
+					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+					owner->id, value->id, value->serial,
+					value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
+			}
+		}
+
+		if(sodero_xdr_tcp_message(&gTCPSocket, report))
+			result++;
+		//		value = value->link;
+		break;
+	}
+	return result;
+}
+
 int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag) {
 	int result = 0;
 	while (value) {
@@ -2338,6 +962,78 @@ int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag) {
 
 			if (isExportReport()) {
 				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
+					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+					owner->id, value->id, value->serial,
+					value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
+			}
+		}
+
+		if(sodero_xdr_tcp_message(&gTCPSocket, report))
+			result++;
+		//		value = value->link;
+		break;
+	}
+	return result;
+}
+
+int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
+	int result = 0;
+	while (value) {
+		PSoderoTCPSession owner = value->owner;
+		TXDREventBuffer data;
+		bzero(&data.event, sizeof(data.event));
+		data.event.data.length = sizeof(data) - sizeof(data.event);
+
+		TSoderoTCPReportMsg * report = &data.event.message;
+		report->type = SESSION_EVENT;
+
+		TSoderoSessionMsg * msssage = &report->TSoderoTCPReportMsg_u.session_event;
+		msssage->event = EVENT_TYPE_DB_ORACLE;
+
+		TSoderoTCPSessionContent * content = &msssage->session_content;
+		content->type = SESSION_TYPE_ORACLE;
+
+		if (value->command == 1) {
+			content->TSoderoTCPSessionContent_u.tns.type = TNS_TYPE_LOGIN;
+			TSoderoTnsLoginMsg * record = & content->TSoderoTCPSessionContent_u.tns.login;
+			record->session_id = owner->id;
+			record->application_id = value->id;
+			record->reqTime = value->reqTime;
+			record->rspTime = value->rspTime;
+			SODERO_SAFE_TEXT(record, user, value->user);
+			SODERO_SAFE_TEXT(record, database, value->database);
+			record->status = value->status;
+
+			if (isExportReport()) {
+				printf("Report - Oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						"\ttime %llu to %llu status %u user %s database %s\n",
+					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+					owner->id, value->id, value->serial,
+					value->reqTime, value->rspTime, value->status,
+					value->user ? value->user : "", value->database ? value->database : "");
+			}
+		} else {
+			content->TSoderoTCPSessionContent_u.tns.type =TNS_TYPE_COMMAND;
+			TSoderoTnsCommandMsg * record = & content->TSoderoTCPSessionContent_u.tns.command;
+			record->session_id = owner->id;
+			record->application_id = value->id;
+			record->reqFirst = value->reqFirst;
+			record->reqLast = value->reqLast;
+			record->reqCount = value->traffic.outgoing.count;
+			record->reqBytes = value->traffic.outgoing.bytes;
+			record->rspCount = value->traffic.incoming.count;
+			record->rspBytes = value->traffic.incoming.bytes;
+			record->rspFirst  = value->rspFirst;
+			record->rspLast = value->rspLast;
+			record->row = value->row;
+			record->col = value->col;
+			record->set = value->set;
+
+			if (isExportReport()) {
+				printf("Report - Oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 						"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
 					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
 					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
@@ -2524,6 +1220,573 @@ int sodero_report_http_body(PSoderoApplicationHTTP value, int flag) {
 	return result;
 }
 
+void sodero_report_disconnect(void) {
+	gAgentID = 0;
+	if (gTCPSocket > 0) close(gTCPSocket);
+	gTCPSocket = 0;
+	if (gUDPSocket > 0) close(gUDPSocket);
+	gUDPSocket = 0;
+}
+
+#if defined(__FreeBSD__) || defined(__APPLE__)
+#define UNIX_INTERFACE_LEN 32
+#define UNIX_INTERFACE_MAX 64
+
+typedef struct {
+	TNodeIndex node;
+	char       name[UNIX_INTERFACE_LEN];
+} TUnixNodeItem, * PUnixNodeItem;
+
+TUnixNodeItem items[UNIX_INTERFACE_MAX];
+
+PUnixNodeItem lookupNodeItem(const char * name) {
+	for (int i = 0; i < UNIX_INTERFACE_MAX; i++) {
+		PUnixNodeItem result = &items[i];
+		if (strlen(result->name) > 0) {
+			if (same_str(result->name, name))
+				return result;
+		} else {
+			strncpy(result->name, name, sizeof(result->name)-1);
+			return result;
+		}
+	}
+	return nullptr;
+}
+#endif
+
+void sodero_report_self(void) {
+#ifdef __linux__
+	register int fd, intrface;
+	struct ifreq buf[MAXINTERFACES];
+	struct ifconf ifc;
+
+	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) >= 0) {
+		ifc.ifc_len = sizeof(buf);
+		ifc.ifc_buf = (caddr_t) buf;
+		if (!ioctl(fd, SIOCGIFCONF, (char *) &ifc)) {
+			intrface = ifc.ifc_len / sizeof(struct ifreq);
+
+			while (intrface-- > 0) {
+				TNodeIndex node;
+				bzero(&node, sizeof(node));
+				if (ioctl(fd, SIOCGIFADDR, (char *) &buf[intrface])) {
+					printf("cpm: ioctl device %s ip", buf[intrface].ifr_name);
+					continue;
+				}
+				node.ip.l.ip = ((struct sockaddr_in*) (&buf[intrface].ifr_addr))->sin_addr.s_addr;
+
+				if (ioctl(fd, SIOCGIFHWADDR, (char *) &buf[intrface])) {
+					printf( "cpm: ioctl device %s mac", buf[intrface].ifr_name);
+					continue;
+				}
+//				node.mac = *(PMAC)buf[intrface].ifr_hwaddr.sa_data;
+				memcpy(&node.mac, buf[intrface].ifr_hwaddr.sa_data, sizeof(node.mac));
+
+				sodero_report_node(&node, buf[intrface].ifr_name, ORIGIN_NODES);
+			}
+		} else
+			perror("cpm: ioctl");
+
+	} else
+		perror("cpm: socket");
+
+	close(fd);
+#endif
+#if defined(__FreeBSD__) || defined(__APPLE__)
+	struct ifaddrs *ifa,*curifa;
+
+	if(getifaddrs(&ifa) < 0) {
+		perror("getifaddrs error");
+		return;	//	exit(127);
+	}
+
+#define UNIX_INTERFACE_LEN 32
+#define UNIX_INTERFACE_MAX 64
+
+	bzero(items, sizeof(items));
+
+	for(curifa = ifa; curifa != NULL; curifa = curifa->ifa_next) {
+		if(curifa->ifa_addr->sa_family == AF_INET) {
+			PUnixNodeItem item = lookupNodeItem(curifa->ifa_name);
+			if (item)
+				item->node.ip.l.ip = ((struct sockaddr_in*)curifa->ifa_addr)->sin_addr.s_addr;
+		}
+		if(curifa->ifa_addr->sa_family == AF_LINK) {
+			PUnixNodeItem item = lookupNodeItem(curifa->ifa_name);
+			if (item)
+				memcpy(&item->node.mac, curifa->ifa_addr, sizeof(item->node.mac));
+		}
+	}
+	freeifaddrs(ifa);
+
+	for (int i = 0; i < UNIX_INTERFACE_MAX; i++) {
+		PUnixNodeItem item = &items[i];
+		if (strlen(item->name) > 0) {
+			if (item->node.ip.l.ip)	//	 && item->node.mac.b4
+				sodero_report_node(&item->node, item->name, ORIGIN_NODES);
+		}
+	}
+
+#endif
+}
+
+int sodero_report_connect(void) {
+	if (gTCPSocket > 0) close(gTCPSocket);
+	gTCPSocket = sodero_connect2server(gServer, gService, SOCK_STREAM);
+	if (gTCPSocket < 0) return false;
+
+	if (gUDPSocket > 0) close(gUDPSocket);
+	gUDPSocket = sodero_connect2server(gServer, gService, SOCK_DGRAM );
+	if (gUDPSocket < 0) return false;
+
+	int flag = 1;
+	int ret = setsockopt (gTCPSocket, IPPROTO_TCP, TCP_NODELAY, &flag, sizeof(flag));
+	if (ret < 0)
+		printf("Close nagle failure\n");
+
+	if (!sodero_report_shakehand()) {
+		sodero_report_disconnect();
+		return false;
+	}
+
+	gNode.mac = gMAC;
+	gNode.ip  = gHost ;
+
+	sodero_report_self();
+
+	return TRUE;
+}
+
+int sodero_report_check(void) {
+	if (gTCPSocket | gUDPSocket) return TRUE;
+	sodero_report_disconnect();
+	return sodero_report_connect();
+}
+
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_SYN = "counter.tcp.syn";
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_ACK = "counter.tcp.ack";
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_FIN = "counter.tcp.fin";
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_RST = "counter.tcp.rst";
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_URG = "counter.tcp.urg";
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_ECN = "counter.tcp.ecn";
+const char * SODERO_REPORT_IDENT_COUNTER_TCP_CWR = "counter.tcp.cwr";
+
+const char * SODERO_REPORT_IDENT_ETHER_COUNT = "l2.frames";	//	"ether.packet.count";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES = "l2.bytes";	//	"ether.packet.bytes";
+
+const char * SODERO_REPORT_IDENT_ETHER_BCAST_COUNT = "l2.bcast_frames";
+const char * SODERO_REPORT_IDENT_ETHER_BCAST_BYTES = "l2.bcast_bytes";
+const char * SODERO_REPORT_IDENT_ETHER_MCAST_COUNT = "l2.mcast_frames";
+const char * SODERO_REPORT_IDENT_ETHER_MCAST_BYTES = "l2.mcast_bytes";
+const char * SODERO_REPORT_IDENT_ETHER_UCAST_COUNT = "l2.ucast_frames";
+const char * SODERO_REPORT_IDENT_ETHER_UCAST_BYTES = "l2.ucast_bytes";
+
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_00064 = "l2.frames_64";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_00064 = "l2.bytes_64";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_00128 = "l2.frames_128";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_00128 = "l2.bytes_128";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_00256 = "l2.frames_256";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_00256 = "l2.bytes_256";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_00512 = "l2.frames_512";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_00512 = "l2.bytes_512";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_01024 = "l2.frames_1024";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_01024 = "l2.bytes_1024";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_01514 = "l2.frames_1514";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_01514 = "l2.bytes_1514";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_01518 = "l2.frames_1518";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_01518 = "l2.bytes_1518";
+const char * SODERO_REPORT_IDENT_ETHER_COUNT_jumbo= "l2.frames_jumbo";
+const char * SODERO_REPORT_IDENT_ETHER_BYTES_jumbo= "l2.bytes_jumbo";
+
+const char * SODERO_REPORT_IDENT_ETHER_ARP_COUNT = "l2.frames|l2_type|ARP";
+const char * SODERO_REPORT_IDENT_ETHER_ARP_BYTES = "l2.bytes|l2_type|ARP";
+const char * SODERO_REPORT_IDENT_ETHER_IPV4_COUNT = "l2.frames|l2_type|IPV4";
+const char * SODERO_REPORT_IDENT_ETHER_IPV4_BYTES = "l2.bytes|l2_type|IPV4";
+const char * SODERO_REPORT_IDENT_ETHER_IPV6_COUNT = "l2.frames|l2_type|IPV6";
+const char * SODERO_REPORT_IDENT_ETHER_IPV6_BYTES = "l2.bytes|l2_type|IPV6";
+const char * SODERO_REPORT_IDENT_ETHER_LACP_COUNT = "l2.frames|l2_type|LACP";
+const char * SODERO_REPORT_IDENT_ETHER_LACP_BYTES = "l2.bytes|l2_type|LACP";
+const char * SODERO_REPORT_IDENT_ETHER_MPLS_COUNT = "l2.frames|l2_type|MPLS";
+const char * SODERO_REPORT_IDENT_ETHER_MPLS_BYTES = "l2.bytes|l2_type|MPLS";
+const char * SODERO_REPORT_IDENT_ETHER_RSTP_COUNT = "l2.frames|l2_type|STP";
+const char * SODERO_REPORT_IDENT_ETHER_RSTP_BYTES = "l2.bytes|l2_type|STP";
+const char * SODERO_REPORT_IDENT_ETHER_OTHER_COUNT = "l2.frames|l2_type|Others";
+const char * SODERO_REPORT_IDENT_ETHER_OTHER_BYTES = "l2.bytes|l2_type|Others";
+
+const char * SODERO_REPORT_IDENT_ETHER_OUTGOING_COUNT = "l2.req_frames";
+const char * SODERO_REPORT_IDENT_ETHER_OUTGOING_BYTES = "l2.req_frames";
+const char * SODERO_REPORT_IDENT_ETHER_INCOMING_COUNT = "l2.rsp_frames";
+const char * SODERO_REPORT_IDENT_ETHER_INCOMING_BYTES = "l2.rsp_bytes" ;
+
+const char * SODERO_REPORT_IDENT_IPV4_COUNT = "l3.pkts";	//	"ipv4.packet.count";
+const char * SODERO_REPORT_IDENT_IPV4_BYTES = "l3.bytes";	//	"ipv4.packet.bytes";
+
+const char * SODERO_REPORT_IDENT_IPV4_ICMP_COUNT = "l3.pkts|l3_type|ICMP";
+const char * SODERO_REPORT_IDENT_IPV4_ICMP_BYTES = "l3.bytes|l3_type|ICMP";
+const char * SODERO_REPORT_IDENT_IPV4_TCP_COUNT = "l3.pkts|l3_type|TCP";
+const char * SODERO_REPORT_IDENT_IPV4_TCP_BYTES = "l3.bytes|l3_type|TCP";
+const char * SODERO_REPORT_IDENT_IPV4_UDP_COUNT = "l3.pkts|l3_type|UDP";
+const char * SODERO_REPORT_IDENT_IPV4_UDP_BYTES = "l3.bytes|l3_type|UDP";
+const char * SODERO_REPORT_IDENT_IPV4_OTHER_COUNT = "l3.pkts|l3_type|Others";
+const char * SODERO_REPORT_IDENT_IPV4_OTHER_BYTES = "l3.bytes|l3_type|Others";
+
+const char * SODERO_REPORT_IDENT_ICMP_COUNT = "";	//	"tcp.packet.count";
+const char * SODERO_REPORT_IDENT_ICMP_BYTES = "";	//	"tcp.packet.bytes";
+const char * SODERO_REPORT_IDENT_TCP_COUNT = "";	//	"tcp.packet.count";
+const char * SODERO_REPORT_IDENT_TCP_BYTES = "";	//	"tcp.packet.bytes";
+const char * SODERO_REPORT_IDENT_UDP_COUNT = "";	//	"tcp.packet.count";
+const char * SODERO_REPORT_IDENT_UDP_BYTES = "";	//	"tcp.packet.bytes";
+const char * SODERO_REPORT_IDENT_SCTP_COUNT = "";	//	"sctp.packet.count";
+const char * SODERO_REPORT_IDENT_SCTP_BYTES = "";	//	"sctp.packet.bytes";
+
+const char * SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT = "tcp.connected";
+const char * SODERO_REPORT_IDENT_TCP_CLOSED_COUNT    = "tcp.closed"   ;
+
+const char * SODERO_REPORT_IDENT_TCP_OUTGOING_COUNT  = "tcp.req_pkts" ;
+const char * SODERO_REPORT_IDENT_TCP_OUTGOING_BYTES  = "tcp.req_bytes";
+const char * SODERO_REPORT_IDENT_TCP_INCOMING_COUNT  = "tcp.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_TCP_INCOMING_BYTES  = "tcp.rsp_bytes";
+const char * SODERO_REPORT_IDENT_UDP_OUTGOING_COUNT  = "udp.req_pkts" ;
+const char * SODERO_REPORT_IDENT_UDP_OUTGOING_BYTES  = "udp.req_bytes";
+const char * SODERO_REPORT_IDENT_UDP_INCOMING_COUNT  = "udp.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_UDP_INCOMING_BYTES  = "udp.rsp_bytes";
+
+const char * SODERO_REPORT_IDENT_HTTP_REQUEST           = "http.reqs" ;
+const char * SODERO_REPORT_IDENT_HTTP_REQUEST_COUNT     = "http.req_pkts" ;
+const char * SODERO_REPORT_IDENT_HTTP_REQUEST_BYTES     = "http.req_bytes";
+const char * SODERO_REPORT_IDENT_HTTP_REQUEST_L2_BYTES  = "http.req_l2_bytes";
+const char * SODERO_REPORT_IDENT_HTTP_RESPONSE          = "http.rsps";
+const char * SODERO_REPORT_IDENT_HTTP_RESPONSE_COUNT    = "http.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_HTTP_RESPONSE_BYTES    = "http.rsp_bytes";
+const char * SODERO_REPORT_IDENT_HTTP_RESPONSE_L2_BYTES = "http.rsp_l2_bytes";
+
+const char * SODERO_REPORT_IDENT_HTTP_INCOMING_COUNT  = "http.req_pkts" ;
+const char * SODERO_REPORT_IDENT_HTTP_INCOMING_BYTES  = "http.req_bytes";
+const char * SODERO_REPORT_IDENT_HTTP_INCOMING_L2_BYTE= "http.req_l2_bytes";
+const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_COUNT  = "http.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_BYTES  = "http.rsp_bytes";
+const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_L2_BYTE= "http.rsp_l2_bytes";
+
+const char * SODERO_REPORT_IDENT_HTTP_METHOD = "http.method";
+const char * SODERO_REPORT_IDENT_HTTP_ERROR  = "http.error" ;
+const char * SODERO_REPORT_IDENT_HTTP_RTT    = "http.rtt"   ;
+
+const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_COUNT     = "mysql.req_pkts" ;
+const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_BYTES     = "mysql.req_bytes";
+const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_L2_BYTES  = "mysql.req_l2_bytes";
+const char * SODERO_REPORT_IDENT_MYSQL_RESPONSE_COUNT    = "mysql.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_MYSQL_RESPONSE_BYTES    = "mysql.rsp_bytes";
+const char * SODERO_REPORT_IDENT_MYSQL_RESPONSE_L2_BYTES = "mysql.rsp_l2_bytes";
+
+const char * SODERO_REPORT_IDENT_MYSQL_COMMAND = "mysql.reqs";
+const char * SODERO_REPORT_IDENT_MYSQL_BLOCK   = "mysql.blocks";
+const char * SODERO_REPORT_IDENT_MYSQL_RTT     = "mysql.rtt";
+
+const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT     = "oracle.req_pkts" ;
+const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_BYTES     = "oracle.req_bytes";
+const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_L2_BYTES  = "oracle.req_l2_bytes";
+const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT    = "oracle.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_BYTES    = "oracle.rsp_bytes";
+const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_L2_BYTES = "oracle.rsp_l2_bytes";
+
+const char * SODERO_REPORT_IDENT_ORACLE_COMMAND = "oracle.reqs";
+const char * SODERO_REPORT_IDENT_ORACLE_BLOCK   = "oracle.blocks";
+const char * SODERO_REPORT_IDENT_ORACLE_RTT     = "oracle.rtt";
+
+const char * SODERO_REPORT_IDENT_DNS_REQUEST_COUNT  = "dns.req_pkts" ;
+const char * SODERO_REPORT_IDENT_DNS_REQUEST_BYTES  = "dns.req_bytes";
+const char * SODERO_REPORT_IDENT_DNS_RESPONSE_COUNT  = "dns.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_DNS_RESPONSE_BYTES  = "dns.rsp_bytes";
+
+const char * SODERO_REPORT_IDENT_DNS_OUTGOING_TRUNCS  = "dns.req_truncs";
+const char * SODERO_REPORT_IDENT_DNS_INCOMING_TRUNCS  = "dns.rsp_truncs";
+const char * SODERO_REPORT_IDENT_DNS_OUTGOING_OCODES  = "dns.req_opcodes|dns_opcode|%u";
+const char * SODERO_REPORT_IDENT_DNS_INCOMING_OCODES  = "dns.rsp_rcodes|dns_rcode|%u";
+
+const char * SODERO_REPORT_IDENT_DNS_OUTGOING_ERROR   = "dns.rsp_errors";
+const char * SODERO_REPORT_IDENT_DNS_INCOMING_TIMEOUT = "dns.req_timeout";
+
+const char * SODERO_REPORT_IDENT_DNS_INCOMING_DURATION = "dns.rtt";
+
+const char * sodero_ident_ipv4_count(int proto) {
+	switch(proto) {
+	case IPv4_TYPE_ICMP:
+		return SODERO_REPORT_IDENT_ICMP_COUNT;
+	case IPv4_TYPE_TCP:
+		return SODERO_REPORT_IDENT_TCP_COUNT;
+	case IPv4_TYPE_UDP:
+		return SODERO_REPORT_IDENT_UDP_COUNT;
+	case IPv4_TYPE_SCTP:
+		return SODERO_REPORT_IDENT_SCTP_COUNT;
+	}
+	return nullptr;
+}
+
+const char * sodero_ident_ipv4_bytes(int proto) {
+	switch(proto) {
+	case IPv4_TYPE_ICMP:
+		return SODERO_REPORT_IDENT_ICMP_BYTES;
+	case IPv4_TYPE_TCP:
+		return SODERO_REPORT_IDENT_TCP_BYTES;
+	case IPv4_TYPE_UDP:
+		return SODERO_REPORT_IDENT_UDP_BYTES;
+	case IPv4_TYPE_SCTP:
+		return SODERO_REPORT_IDENT_SCTP_BYTES;
+	}
+	return nullptr;
+}
+
+long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNodeValue v, unsigned long long * metricCount) {
+#ifdef __EXPORT_REPORT__
+	dumpNode(index, k, v);
+#endif
+	if (k->ip.l.ip) {
+		if (isGIPv4(k->ip.l)) return 0;
+	}
+	if (count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL) > 0) {
+		//	Node
+		sodero_report_node(k, nullptr, SODERO_NODES);
+		//	L2
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES, bytes_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL), metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00064, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00064), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00064, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00064), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00128, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00128), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00128, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00128), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00256, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00256), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00256, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00256), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_00512, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_00512), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_00512, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_00512), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_01024, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_01024), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_01024, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_01024), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_01514, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_01514), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_01514, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_01514), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_01518, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_01518), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_01518, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_01518), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_COUNT_jumbo, count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_JUMBO), metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BYTES_jumbo, bytes_of_total(&v->l2.total, SODERO_PACKET_INDEX_JUMBO), metricCount);
+
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_INCOMING_COUNT, v->l2.total.incoming.total.count, metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_INCOMING_BYTES, v->l2.total.incoming.total.bytes, metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OUTGOING_COUNT, v->l2.total.incoming.total.count, metricCount);
+//		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OUTGOING_BYTES, v->l2.total.incoming.total.bytes, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BCAST_COUNT, count_of_datum(&v->l2.bcast), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_BCAST_BYTES, bytes_of_datum(&v->l2.bcast), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MCAST_COUNT, count_of_datum(&v->l2.mcast), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MCAST_BYTES, bytes_of_datum(&v->l2.mcast), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_UCAST_COUNT, count_of_datum(&v->l2.ucast), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_UCAST_BYTES, bytes_of_datum(&v->l2.ucast), metricCount);
+
+		//	L2|l2_type
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_ARP_COUNT  , count_of_datum(&v->l2.arp  ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_ARP_BYTES  , bytes_of_datum(&v->l2.arp  ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV4_COUNT , count_of_datum(&v->l2.ipv4 ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV4_BYTES , bytes_of_datum(&v->l2.ipv4 ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV6_COUNT , count_of_datum(&v->l2.ipv6 ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_IPV6_BYTES , bytes_of_datum(&v->l2.ipv6 ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_LACP_COUNT , count_of_datum(&v->l2.lacp ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_LACP_BYTES , bytes_of_datum(&v->l2.lacp ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MPLS_COUNT , count_of_datum(&v->l2.mpls ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_MPLS_BYTES , bytes_of_datum(&v->l2.mpls ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_RSTP_COUNT , count_of_datum(&v->l2.rstp ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_RSTP_BYTES , bytes_of_datum(&v->l2.rstp ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OTHER_COUNT, count_of_datum(&v->l2.other), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ETHER_OTHER_BYTES, bytes_of_datum(&v->l2.other), metricCount);
+
+		//	L3
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_COUNT, count_of_datum(&v->l3.total), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_BYTES, count_of_datum(&v->l3.total), metricCount);
+
+		//	L3|l3_type
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_ICMP_COUNT , count_of_datum(&v->l3.icmp ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_ICMP_BYTES , bytes_of_datum(&v->l3.icmp ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_TCP_COUNT  , count_of_datum(&v->l3.tcp  ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_TCP_BYTES  , bytes_of_datum(&v->l3.tcp  ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_UDP_COUNT  , count_of_datum(&v->l3.udp  ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_UDP_BYTES  , bytes_of_datum(&v->l3.udp  ), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_OTHER_COUNT, count_of_datum(&v->l3.other), metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_IPV4_OTHER_BYTES, bytes_of_datum(&v->l3.other), metricCount);
+
+		// L4
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_OUTGOING_COUNT  , v->l3.tcp.outgoing.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_OUTGOING_BYTES  , v->l3.tcp.outgoing.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_INCOMING_COUNT  , v->l3.tcp.incoming.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_INCOMING_BYTES  , v->l3.tcp.incoming.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_OUTGOING_COUNT  , v->l3.udp.outgoing.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_OUTGOING_BYTES  , v->l3.udp.outgoing.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_INCOMING_COUNT  , v->l3.udp.incoming.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_UDP_INCOMING_BYTES  , v->l3.udp.incoming.bytes, metricCount);
+
+		if (isExportVerbose())
+			printf("Report %p TCP Connect %u Disconntect %u\n", v,
+				v->counter.tcp.outgoing.connectedCount + v->counter.tcp.incoming.connectedCount,
+				v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT, v->counter.tcp.outgoing.connectedCount   + v->counter.tcp.incoming.connectedCount  , metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CLOSED_COUNT   , v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount, metricCount);
+
+		//	L7
+		//	HTTP
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_COUNT , v->l4.http.outgoing.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_BYTES , v->l4.http.outgoing.value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_COUNT, v->l4.http.incoming.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_BYTES, v->l4.http.incoming.value.bytes, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_L2_BYTES , v->l4.http.outgoing.l2, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_L2_BYTES, v->l4.http.incoming.l2, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_METHOD, v->l4.http.outgoing.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_ERROR , v->l4.http.incoming.count, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST , v->l4.http.outgoing.action, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE, v->l4.http.incoming.action, metricCount);
+
+		unsigned long long rttValue = v->l4.http.incoming.rttValue + v->l4.http.outgoing.rttValue;
+		unsigned int       rttCount = v->l4.http.incoming.rttCount + v->l4.http.outgoing.rttCount;
+		if (rttCount)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RTT, rttValue / rttCount, metricCount);
+
+		//	MySQL
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_COUNT , v->l4.mysql.outgoing.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_BYTES , v->l4.mysql.outgoing.value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RESPONSE_COUNT, v->l4.mysql.incoming.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RESPONSE_BYTES, v->l4.mysql.incoming.value.bytes, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_L2_BYTES , v->l4.mysql.outgoing.l2, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RESPONSE_L2_BYTES, v->l4.mysql.incoming.l2, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_COMMAND, v->l4.mysql.outgoing.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_BLOCK  , v->l4.mysql.incoming.block, metricCount);
+
+		rttValue = v->l4.mysql.incoming.rttValue + v->l4.mysql.outgoing.rttValue;
+		rttCount = v->l4.mysql.incoming.rttCount + v->l4.mysql.outgoing.rttCount;
+		if (rttCount)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RTT, rttValue / rttCount, metricCount);
+
+	       //	Oracle
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT , v->l4.tns.outgoing.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_BYTES , v->l4.tns.outgoing.value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT, v->l4.tns.incoming.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_BYTES, v->l4.tns.incoming.value.bytes, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_L2_BYTES , v->l4.tns.outgoing.l2, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_L2_BYTES, v->l4.tns.incoming.l2, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_COMMAND, v->l4.tns.outgoing.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_BLOCK  , v->l4.tns.incoming.block, metricCount);
+
+		rttValue = v->l4.tns.incoming.rttValue + v->l4.tns.outgoing.rttValue;
+		rttCount = v->l4.tns.incoming.rttCount + v->l4.tns.outgoing.rttCount;
+		if (rttCount)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RTT, rttValue / rttCount, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_REQUEST_COUNT  , v->l4.dns.incoming.request .value.count + v->l4.dns.outgoing.request .value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_REQUEST_BYTES  , v->l4.dns.incoming.request .value.bytes + v->l4.dns.outgoing.request .value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_RESPONSE_COUNT , v->l4.dns.incoming.response.value.count + v->l4.dns.outgoing.response.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_RESPONSE_BYTES , v->l4.dns.incoming.response.value.bytes + v->l4.dns.outgoing.response.value.bytes, metricCount);
+
+		for (int i = 0; i < 3; i++)
+			SODERO_REPORT_GROUP(k, SODERO_REPORT_IDENT_DNS_OUTGOING_OCODES, i, v->l4.dns.incoming.request .codes.o.codes[i], metricCount);
+		int errorCount = 0;
+		for (int i = 0; i < 6; i++) {
+			if (i > 0) {
+//				iError += v->l4.dns.incoming.response.codes.r.codes[i];
+//				oError += v->l4.dns.outgoing.response.codes.r.codes[i];
+				errorCount += v->l4.dns.outgoing.response.codes.r.codes[i];
+			}
+			SODERO_REPORT_GROUP(k, SODERO_REPORT_IDENT_DNS_INCOMING_OCODES, i, v->l4.dns.outgoing.request .codes.r.codes[i], metricCount);
+		}
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_OUTGOING_ERROR, errorCount, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_INCOMING_TIMEOUT, v->l4.dns.incoming.timeout + v->l4.dns.outgoing.timeout, metricCount);
+
+		TSoderoUnitDatum duration = {
+				v->l4.dns.incoming.duration.count + v->l4.dns.outgoing.duration.count,
+				{{v->l4.dns.incoming.duration.sum + v->l4.dns.outgoing.duration.sum,
+				v->l4.dns.incoming.duration.max + v->l4.dns.outgoing.duration.max,
+				v->l4.dns.incoming.duration.min + v->l4.dns.outgoing.duration.min}}
+		};
+		SODERO_REPORT_DATUM(k, SODERO_REPORT_IDENT_DNS_INCOMING_DURATION, duration, metricCount);
+	}
+	return 0;
+}
+
+long map_service_report_handlor(PSoderoMap container, int index, PServiceIndex k, PSoderoDoubleDatum v, unsigned long long * metricCount) {
+	if (k->node.ip.l.ip) {
+		if (isGIPv4(k->node.ip.l)) return 0;
+	}
+
+	char name[256];
+	snprintf(name, sizeof(name)-1, "tcp.req_pkts|l4_group|%hu", (unsigned short) k->port);
+	SODERO_REPORT_VALUE(&k->node, name, v->outgoing.count, metricCount);
+	snprintf(name, sizeof(name)-1, "tcp.req_bytes|l4_group|%hu", (unsigned short) k->port);
+	SODERO_REPORT_VALUE(&k->node, name, v->outgoing.bytes, metricCount);
+	snprintf(name, sizeof(name)-1, "tcp.rsp_pkts|l4_group|%hu", (unsigned short) k->port);
+	SODERO_REPORT_VALUE(&k->node, name, v->incoming.count, metricCount);
+	snprintf(name, sizeof(name)-1, "tcp.rsp_bytes|l4_group|%hu", (unsigned short) k->port);
+	SODERO_REPORT_VALUE(&k->node, name, v->incoming.bytes, metricCount);
+
+	return 0;
+}
+
+#ifdef __NO_CYCLE__
+long session_manager_handlor(PSoderoSessionManager container, int index, PSoderoSession object, void * data) {
+	return sodero_report_session(object, SODERO_REPORT_WAY_BODY);
+}
+#endif
+
+int sodero_send(PSoderoPeriodResult result, PSoderoSessionManager manager) {
+	unsigned long long metricCount = 0;
+
+#ifdef __NO_CYCLE__
+	if (sodero_session_foreach(manager, (TSessionTimeoutHandlor) session_manager_handlor, nullptr) < 0) return false;
+#endif
+	if (sodero_map_foreach(result->nodes.items, (TforeachMapHandlor)map_node_report_handlor   , &metricCount) < 0) return false;
+	if (sodero_map_foreach(result->nodes.ports, (TforeachMapHandlor)map_service_report_handlor, &metricCount) < 0) return false;
+
+	sodero_report_finished(metricCount);
+	return true;
+}
+
+void sodero_report_result(PSoderoPeriodResult result, PSoderoSessionManager manager) {
+	if (!result) return;
+
+	gReportCounter = result->time / uSecsPerSec;
+
+#ifndef __SKIP_REPORT__
+	do {
+		if (!sodero_report_check()) {
+			printf("Can't connect to server\n");
+			break;
+		}
+
+		long long b = now();
+#ifndef __SKIP_WRITE__
+		if (!sodero_send(result, manager)) {
+			printf("Can't send report to server\n");
+			sodero_report_disconnect();
+			break;
+		}
+#endif
+		reset_period_result(result);
+		long long e = now();
+
+		if (gT)
+		printf("Report time %.3fs send %llu/%u recv %llu/%u Data %.3fs %llu/%u\n",
+				1e-6*(gO + e-b), gReportSend.bytes, gReportSend.count, gReportRecv.bytes, gReportRecv.count,
+				1e-6*(gT      ), gCurrent.bytes, gCurrent.count);
+		gReportSend.bytes = 0;
+		gReportSend.count = 0;
+		gCurrent.bytes = 0;
+		gCurrent.count = 0;
+		gT = 0;
+		gO = 0;
+	} while (false);
+#endif
+
+	gB = now();
+}
+
 int sodero_report_arp_event(PSoderoARPEvent session, unsigned long time) {
 	TXDREventBuffer data;
 	bzero(&data.event, sizeof(data.event));
@@ -2609,7 +1872,6 @@ int sodero_report_icmp_session(PSoderoICMPSession session, int way) {
 	}
 	return true;
 }
-#endif
 
 int sodero_report_tcp_session(PSoderoTCPSession session, int way) {
 	int flag = way & SODERO_REPORT_DONE;
@@ -2684,6 +1946,11 @@ int sodero_report_session(PSoderoSession session, int way) {
 //			session->key.s[0], session->key.s[1], session->key.s[2], session->key.s[3], ntohs(session->key.sourPort),
 //			session->key.d[0], session->key.d[1], session->key.d[2], session->key.d[3], ntohs(session->key.destPort));
 
+      /*write to log file*/
+       LogDbg("[Session |%d |%s | %x | %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d | %d | %d]", session->id, ipv4_proto_name(session->key.proto), way,
+			session->key.s[0], session->key.s[1], session->key.s[2], session->key.s[3], ntohs(session->key.sourPort),
+			session->key.d[0], session->key.d[1], session->key.d[2], session->key.d[3], ntohs(session->key.destPort),
+			session->traffic.outgoing.bytes, session->traffic.incoming.bytes);
 	switch(session->key.proto) {
 	case IPPROTO_ICMP:
 		return sodero_report_icmp_session((PSoderoICMPSession) session, way);
@@ -2701,6 +1968,13 @@ int sodero_report_application(PSoderoApplication application, int flag) {
 	while(application) {
 		PSoderoSession session = application->owner;
 		if (!session) return true;
+
+		/*write to log file*/
+              LogDbg("[Session |%d|%d |%x | %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d | %d | %d]", session->id, session->flag, flag,
+			session->key.s[0], session->key.s[1], session->key.s[2], session->key.s[3], ntohs(session->key.sourPort),
+			session->key.d[0], session->key.d[1], session->key.d[2], session->key.d[3], ntohs(session->key.destPort),
+			session->traffic.outgoing.bytes, session->traffic.incoming.bytes);
+			
 		switch(session->key.proto) {
 		case IPPROTO_ICMP:
 			break;
@@ -2751,6 +2025,8 @@ int sodero_report_tcp_application(PSoderoApplication application, int flag) {
 			break;
 		case SESSION_TYPE_MINOR_MYSQL:
 			return sodero_report_mysql_application((PSoderoMySQLApplication)application, flag);
+		case SESSION_TYPE_MINOR_ORACLE:
+			return sodero_report_oracle_application((PSoderoMySQLApplication)application, flag);
 	}
 	return true;
 }

@@ -25,7 +25,6 @@
 #include "Logic.h"
 #include "Core.h"
 
-
 TNodeIndex gNode;
 
 //	Core Data!!!
@@ -212,8 +211,6 @@ void cleanAll(void) {
 }
 
 void processTimeout(PSoderoSession session) {
-#ifdef __REPORT_DIRECT__
-#else
 
 #ifndef __SKIP_DETECT__
 	if (sodero_pointer_foreach(gEvents, (TforeachPointerHandlor) report_event_handlor, (void*)SODERO_REPORT_WAY_DONE) < 0) goto error;
@@ -275,7 +272,6 @@ error:
 
 clean:
 	cleanTimeout(session);
-#endif
 }
 
 PSoderoPeriodResult timerHandler(long long time) {
@@ -374,11 +370,7 @@ PSoderoPeriodResult timerHandler(long long time) {
 
 
 int packetHandler(const PEtherPacket packet, int size, int length) {
-	sodero_report_result(timerHandler(now())
-#ifdef __NO_CYCLE__
-			, getSessionManager()
-#endif
-			);
+	sodero_report_result(timerHandler(now()), getSessionManager());
 
 	if (packet) {
 		processEtherPacket(packet, size, length);
@@ -390,34 +382,13 @@ int packetHandler(const PEtherPacket packet, int size, int length) {
 	return 0;
 }
 
-int simulateHandler(const PEtherPacket packet, PPCAPPacketHeader header) {
-	sodero_report_result(timerHandler(header->time.usecond + header->time.seconds * uSecsPerSec)
-#ifdef __NO_CYCLE__
-			, getSessionManager()
-#endif
-			);
+int pcapHandler(const PEtherPacket packet, PPCAPPacketHeader header) {
+	sodero_report_result(timerHandler(header->time.usecond + header->time.seconds * uSecsPerSec), getSessionManager());
 
 	if (packet) {
 		processEtherPacket(packet, header->size, header->length);
 #ifndef __SKIP_SPEED__
 		gBytes += header->length;
-#endif
-	}
-
-	return 0;
-}
-
-int pcapHandler(const PEtherPacket packet, PCaptureHeader header) {
-	sodero_report_result(timerHandler(header->ts.tv_usec + header->ts.tv_sec * uSecsPerSec)
-#ifdef __NO_CYCLE__
-			, getSessionManager()
-#endif
-			);
-
-	if (packet) {
-		processEtherPacket(packet, header->caplen, header->len);
-#ifndef __SKIP_SPEED__
-		gBytes += header->len;
 #endif
 	}
 

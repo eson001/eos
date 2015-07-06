@@ -131,7 +131,7 @@ int processUDPPacket(const void * data, int size, int length, PIPHeader ip, PEth
 		session = newUDPSession(&key, gUDPActivedTime, SODERO_UDP_OPENED, ether);
 	}
 
-	int dir = dir_of_iport(&session->key, &key);
+	int dir = dir_of_ipv4(&session->key.ipPair, &key.ipPair);
 
 	return processUDPData(session, dir, payload_data, payload_size, length, &packet->head, ip, ether);
 }

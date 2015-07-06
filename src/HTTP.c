@@ -166,29 +166,29 @@ unsigned int pickHTTPField(const unsigned char * text, int size, int base, char 
 void processHTTPNode(int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether, int value) {
 	PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
 	PNodeValue destNode = takeIPv4Node((TMACVlan){{ether->dest, ether->vlan}}, ip->dIP);
-	if (dir > 0) {		//	request
-		if (sourNode) {
+	if (dir > 0) {
+		if (sourNode) {	//	request
 			sourNode->l4.http.outgoing.action++;
 			if(value)
-				sourNode->l4.http.outgoing.count++;
+				sourNode->l4.http.outgoing.count++;	//	method in outgoing
 		}
 		if (destNode) {
-			sourNode->l4.http.outgoing.action++;
+			sourNode->l4.http.incoming.action++;
 			if(value)
-				destNode->l4.http.outgoing.count++;
+				destNode->l4.http.outgoing.count++;	//	method in outgoing
 		}
 		return;
 	}
 	if (dir < 0) {	//	response
 		if (sourNode) {
-			sourNode->l4.http.incoming.action++;
+			sourNode->l4.http.outgoing.action++;
 			if (value >= 400)
-				sourNode->l4.http.incoming.count++;
+				sourNode->l4.http.incoming.count++;	//	error in incoming
 		}
 		if (destNode) {
 			destNode->l4.http.incoming.action++;
 			if (value >= 400)
-				destNode->l4.http.incoming.count++;
+				destNode->l4.http.incoming.count++;	//	error in incoming
 		}
 		return;
 	}
@@ -911,19 +911,31 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	do {
 		PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
 		PNodeValue destNode = takeIPv4Node((TMACVlan){{ether->dest, ether->vlan}}, ip->dIP);
+		if (sourNode) {
+			processA(&sourNode->l4.http.outgoing.value, size);
+			sourNode->l4.http.outgoing.l2 += length;
+			sourNode->l4.http.outgoing.rttValue += state->rttTime;
+			sourNode->l4.http.outgoing.rttCount += state->rtt;
+		}
+		if (destNode) {
+			processA(&destNode->l4.http.incoming.value, size);
+			destNode->l4.http.incoming.l2 += length;
+			destNode->l4.http.incoming.rttValue += state->rttTime;
+			destNode->l4.http.incoming.rttCount += state->rtt;
+		}
 		if (dir > 0) {
-			if (sourNode) {
-				processA(&sourNode->l4.http.outgoing.value, size);
-				sourNode->l4.http.outgoing.l2 += length;
-				sourNode->l4.http.outgoing.rttValue += state->rttTime;
-				sourNode->l4.http.outgoing.rttCount += state->rtt;
-			}
-			if (destNode) {
-				processA(&destNode->l4.http.incoming.value, size);
-				destNode->l4.http.incoming.l2 += length;
-				destNode->l4.http.incoming.rttValue += state->rttTime;
-				destNode->l4.http.incoming.rttCount += state->rtt;
-			}
+//			if (sourNode) {
+//				processA(&sourNode->l4.http.outgoing.value, size);
+//				sourNode->l4.http.outgoing.l2 += length;
+//				sourNode->l4.http.outgoing.rttValue += state->rttTime;
+//				sourNode->l4.http.outgoing.rttCount += state->rtt;
+//			}
+//			if (destNode) {
+//				processA(&destNode->l4.http.incoming.value, size);
+//				destNode->l4.http.incoming.l2 += length;
+//				destNode->l4.http.incoming.rttValue += state->rttTime;
+//				destNode->l4.http.incoming.rttCount += state->rtt;
+//			}
 			while(total < gate){
 				int result = processHTTPRequest (session, value, total, data, size, dir, tcp, ip, ether);
 				if (result < 0)
@@ -937,18 +949,18 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 			break;
 		}
 		if (dir < 0) {
-			if (sourNode) {
-				processA(&sourNode->l4.http.outgoing.value, size);
-				sourNode->l4.http.outgoing.l2 += length;
-				sourNode->l4.http.outgoing.rttValue += state->rttTime;
-				sourNode->l4.http.outgoing.rttCount += state->rtt;
-			}
-			if (destNode) {
-				processA(&destNode->l4.http.incoming.value, size);
-				destNode->l4.http.incoming.l2 += length;
-				destNode->l4.http.incoming.rttValue += state->rttTime;
-				destNode->l4.http.incoming.rttCount += state->rtt;
-			}
+//			if (sourNode) {
+//				processA(&sourNode->l4.http.outgoing.value, size);
+//				sourNode->l4.http.outgoing.l2 += length;
+//				sourNode->l4.http.outgoing.rttValue += state->rttTime;
+//				sourNode->l4.http.outgoing.rttCount += state->rtt;
+//			}
+//			if (destNode) {
+//				processA(&destNode->l4.http.incoming.value, size);
+//				destNode->l4.http.incoming.l2 += length;
+//				destNode->l4.http.incoming.rttValue += state->rttTime;
+//				destNode->l4.http.incoming.rttCount += state->rtt;
+//			}
 			while(total < gate){
 				int result = processHTTPResponse(session, value, total, data, size, dir, tcp, ip, ether);
 				if (result < 0)

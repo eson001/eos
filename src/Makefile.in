@@ -96,7 +96,8 @@ am___top_builddir__debug_SummarizeEngine_OBJECTS = DPI.$(OBJEXT) \
 	Logic.$(OBJEXT) Parameter.$(OBJEXT) Report.$(OBJEXT) \
 	Session.$(OBJEXT) Stream.$(OBJEXT) Summarize.$(OBJEXT) \
 	TCP.$(OBJEXT) UDP.$(OBJEXT) XDR.$(OBJEXT) \
-	flow_stats_api.$(OBJEXT) interface.$(OBJEXT) MySQL.$(OBJEXT)
+	flow_stats_api.$(OBJEXT) interface.$(OBJEXT) MySQL.$(OBJEXT) \
+	Report.$(OBJEXT) Tns.$(OBJEXT)
 __top_builddir__debug_SummarizeEngine_OBJECTS =  \
 	$(am___top_builddir__debug_SummarizeEngine_OBJECTS)
 __top_builddir__debug_SummarizeEngine_LDADD = $(LDADD)
@@ -270,7 +271,9 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     XDR.c \
     flow_stats_api.c \
     interface.c \
-    MySQL.c
+    MySQL.c \
+    Report.c \
+    Tns.c
 
 all: all-am
 
@@ -343,6 +346,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Stream.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Summarize.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TCP.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Tns.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UDP.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/XDR.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/flow_stats_api.Po@am__quote@

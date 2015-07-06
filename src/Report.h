@@ -27,9 +27,7 @@
 #include "Core.h"
 #include "Logic.h"
 
-#define SODERO_REPPORT_SIZE (64 * Ki)
-
-#define SODERO_XDR_SUCCESS 200
+#define SODER_XDR_SUCCESS 200
 
 #define SODERO_REPORT_VALUE(I, N, V, C)                            \
 	{                                                              \
@@ -95,28 +93,23 @@ typedef struct ADDRESS_INFO {
 } TAddressInfo, * PAddressInfo;
 
 
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-
-#define SODER0_REPORT_BLOCK_COUNT Ki
-
-typedef struct REPORT_BLOCK {
-	unsigned int       size;
-	unsigned int       used;
-	unsigned long long flag;
-	unsigned char      data[];
-} TReportBlock, * PReportBlock;
-
-extern PReportBlock getReport(void);
-extern void initial_report(void);
-extern void release_report(void);
-
-extern void flushSocket(int terminated);
-
-extern void * transmitor(void * handler);
-
-extern pthread_mutex_t gTransmitMutex;
-extern pthread_cond_t  gTransmitCond ;
-#endif
+//extern int sodero_report_shakehand(void);
+//extern int sodero_report_finished(unsigned int count);
+//extern int sodero_report_node(PNodeIndex node, const char * name, int type);
+//
+//extern int sodero_report_field_value (PNodeIndex index, PXDRFieldName field, unsigned long long value);
+//extern int sodero_report_named_value (PNodeIndex index, const char *  name , unsigned long long value);
+//extern int sodero_report_field_datum (PNodeIndex index, PXDRFieldName field, PSoderoUnitDatum   value);
+//extern int sodero_report_named_datum (PNodeIndex index, const char *  name , PSoderoUnitDatum   value);
+//
+//extern int sodero_report_flow_head(PSoderoPortSession value, int flag);
+//extern int sodero_report_flow_body(PSoderoPortSession value, int flag);
+//extern int sodero_report_http_head(PSoderoApplicationHTTP value, int flag);
+//extern int sodero_report_http_body(PSoderoApplicationHTTP value, int flag);
+//extern int sodero_report_arp_event(PSoderoARPEvent session, unsigned long time);
+//extern int sodero_report_icmp_event(PSoderoICMPEvent session, unsigned long time);
+//extern int sodero_report_dns_application(PSoderoApplicationDNS value, int flag);
+//extern int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag);
 
 extern void sodero_report_disconnect(void);
 extern int sodero_report_connect(void);
@@ -124,14 +117,21 @@ extern int sodero_report_check(void);
 
 extern int sodero_report_event(PSoderoEvent result, int way);
 
-extern void sodero_report_result(PSoderoPeriodResult result
-#ifdef __NO_CYCLE__
-		, PSoderoSessionManager manager
-#endif
-		);
+//extern void reset_period_report(PSoderoPeriodReport report);
+//extern void sodero_report(PSoderoPeriodReport report);
+
+extern void sodero_report_result(PSoderoPeriodResult result, PSoderoSessionManager manager);
+
+//extern int sodero_report_icmp_session(PSoderoICMPSession session, int way);
+//extern int sodero_report_udp_session(PSoderoUDPSession session, int way);
+//extern int sodero_report_tcp_session(PSoderoTCPSession session, int way);
 
 extern int sodero_report_session(PSoderoSession session, int way);
 
 extern int sodero_report_application(PSoderoApplication application, int flag);
+extern int sodero_report_tns_application(PSoderoTnsApplication value, int flag);
+//extern int sodero_report_udp_application(PSoderoApplication session, int flag);
+//extern int sodero_report_tcp_application(PSoderoApplication session, int flag);
+
 
 #endif /* REPORT_H_ */

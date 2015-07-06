@@ -18,7 +18,7 @@
 #define CAPTURE_NORMAL  0
 #define CAPTURE_PROMISC 1
 #define CAPTURE_TIMEOUT 20
-#define CAPTURE_BUFFER (8*Mi)
+#define CAPTURE_BUFFER (128*Mi)
 
 //	port of the analytic agent
 #define SODERO_REPORT_VERSION 0x00000001

@@ -6,6 +6,7 @@
 #define xdr_u_int32_t xdr_uint32_t
 #endif
 
+
 bool_t xdr_TSoderoClientRegisterMsg(XDR *xdrs, TSoderoClientRegisterMsg *objp) {
 	if (!xdr_vector(xdrs, (char *) objp->vrsn, 4, sizeof(u_char),
 			(xdrproc_t) xdr_u_char))
@@ -24,12 +25,12 @@ bool_t xdr_TSoderoClientRegisterMsg(XDR *xdrs, TSoderoClientRegisterMsg *objp) {
 	return TRUE;
 }
 
-//bool_t xdr_PSoderoClientRegisterMsg(XDR *xdrs, TSoderoClientRegisterMsg **objp) {
-//	if (!xdr_pointer(xdrs, (char **) objp, sizeof(TSoderoClientRegisterMsg),
-//			(xdrproc_t) xdr_TSoderoClientRegisterMsg))
-//		return FALSE;
-//	return TRUE;
-//}
+bool_t xdr_PSoderoClientRegisterMsg(XDR *xdrs, PSoderoClientRegisterMsg *objp) {
+	if (!xdr_pointer(xdrs, (char **) objp, sizeof(TSoderoClientRegisterMsg),
+			(xdrproc_t) xdr_TSoderoClientRegisterMsg))
+		return FALSE;
+	return TRUE;
+}
 
 bool_t xdr_TSoderoNodeMsg(XDR *xdrs, TSoderoNodeMsg *objp) {
 	if (!xdr_vector(xdrs, (char *) objp->mac, 6, sizeof(u_char),
@@ -499,190 +500,6 @@ bool_t xdr_TSoderoServerAcknowledgeMsg(XDR *xdrs,
 	return TRUE;
 }
 
-bool_t xdr_TSoderoCountMetricMsg(XDR *xdrs, TSoderoCountMetricMsg *objp) {
-	if (!xdr_u_int32_t(xdrs, &objp->agent_id))
-		return FALSE;
-	if (!xdr_vector(xdrs, (char *) objp->mac, 6, sizeof(u_char),
-			(xdrproc_t) xdr_u_char))
-		return FALSE;
-	if (!xdr_u_short(xdrs, &objp->vlan))
-		return FALSE;
-	if (!xdr_vector(xdrs, (char *) objp->ip, 16, sizeof(u_char),
-			(xdrproc_t) xdr_u_char))
-		return FALSE;
-	if (!xdr_array(xdrs, (char **) &objp->metrics.metrics_val,
-			(u_int *) &objp->metrics.metrics_len, ~0, sizeof(u_char),
-			(xdrproc_t) xdr_u_char))
-		return FALSE;
-	if (!xdr_u_int32_t(xdrs, &objp->time))
-		return FALSE;
-	if (!xdr_u_int64_t(xdrs, &objp->count))
-		return FALSE;
-	return TRUE;
-}
-
-bool_t xdr_TSoderoPeriodicMetricMsg(XDR *xdrs, TSoderoPeriodicMetricMsg *objp) {
-	if (!xdr_u_int32_t(xdrs, &objp->agent_id))
-		return FALSE;
-	if (!xdr_vector(xdrs, (char *) objp->mac, 6, sizeof(u_char),
-			(xdrproc_t) xdr_u_char))
-		return FALSE;
-	if (!xdr_u_short(xdrs, &objp->vlan))
-		return FALSE;
-	if (!xdr_vector(xdrs, (char *) objp->ip, 16, sizeof(u_char),
-			(xdrproc_t) xdr_u_char))
-		return FALSE;
-	if (!xdr_array(xdrs, (char **) &objp->metrics.metrics_val,
-			(u_int *) &objp->metrics.metrics_len, ~0, sizeof(u_char),
-			(xdrproc_t) xdr_u_char))
-		return FALSE;
-	if (!xdr_u_int32_t(xdrs, &objp->time))
-		return FALSE;
-	if (!xdr_u_int64_t(xdrs, &objp->count))
-		return FALSE;
-	if (!xdr_u_int64_t(xdrs, &objp->min))
-		return FALSE;
-	if (!xdr_u_int64_t(xdrs, &objp->max))
-		return FALSE;
-	if (!xdr_u_int64_t(xdrs, &objp->sum))
-		return FALSE;
-	return TRUE;
-}
-
-#ifdef __ASYNCHRONOUS_TRANSMIT__
-bool_t xdr_TSoderoSessionContent(XDR *xdrs, TSoderoSessionContent *objp) {
-	if (!xdr_TSoderoSessionType(xdrs, &objp->type))
-		return FALSE;
-	switch (objp->type) {
-	case SESSION_TYPE_FLOW_HEAD:
-		if (!xdr_TSoderoFLOWSessionHead(xdrs,
-				&objp->TSoderoSessionContent_u.flow_head))
-			return FALSE;
-		break;
-	case SESSION_TYPE_FLOW_BODY:
-		if (!xdr_TSoderoFLOWSessionBody(xdrs,
-				&objp->TSoderoSessionContent_u.flow_body))
-			return FALSE;
-		break;
-	case SESSION_TYPE_HTTP_HEAD:
-		if (!xdr_TSoderoHTTPSessionHead(xdrs,
-				&objp->TSoderoSessionContent_u.http_head))
-			return FALSE;
-		break;
-	case SESSION_TYPE_HTTP_BODY:
-		if (!xdr_TSoderoHTTPSessionBody(xdrs,
-				&objp->TSoderoSessionContent_u.http_body))
-			return FALSE;
-		break;
-	case SESSION_TYPE_DNS:
-		if (!xdr_TSoderoDNSMsg(xdrs, &objp->TSoderoSessionContent_u.dns))
-			return FALSE;
-		break;
-	case SESSION_TYPE_ARP:
-		if (!xdr_TSoderoARPMsg(xdrs, &objp->TSoderoSessionContent_u.arp))
-			return FALSE;
-		break;
-	case SESSION_TYPE_ICMP:
-		if (!xdr_TSoderoICMPType(xdrs, &objp->TSoderoSessionContent_u.icmp.type))
-			return FALSE;
-		switch(objp->TSoderoSessionContent_u.icmp.type) {
-			case ICMP_TYPE_EVENT:
-				if (!xdr_TSoderoICMPThing(xdrs, &objp->TSoderoSessionContent_u.icmp.thing))
-					return FALSE;
-				break;
-			case ICMP_TYPE_SESSION:
-				if (!xdr_TSoderoICMPMsg(xdrs, &objp->TSoderoSessionContent_u.icmp.msg))
-					return FALSE;
-				break;
-			default:
-				return FALSE;
-		}
-		break;
-	case SESSION_TYPE_MYSQL:
-		if (!xdr_TSoderoMySQLType(xdrs, &objp->TSoderoSessionContent_u.mysql.type))
-			return FALSE;
-		switch(objp->TSoderoSessionContent_u.mysql.type) {
-		case MYSQL_TYPE_LOGIN:
-			if (!xdr_TSoderoMySQLLoginMsg(xdrs, &objp->TSoderoSessionContent_u.mysql.login))
-				return FALSE;
-			break;
-		case MYSQL_TYPE_COMMAND:
-			if (!xdr_TSoderoMySQLCommandMsg(xdrs, &objp->TSoderoSessionContent_u.mysql.command))
-				return FALSE;
-			break;
-		}
-		break;
-	default:
-		break;
-	}
-	return TRUE;
-}
-
-bool_t xdr_TSoderoSessionMsg(XDR *xdrs, TSoderoSessionMsg *objp) {
-	if (!xdr_TSoderoSessionEventType(xdrs, &objp->event))
-		return FALSE;
-	if (!xdr_TSoderoSessionContent(xdrs, &objp->session_content))
-		return FALSE;
-	return TRUE;
-}
-
-bool_t xdr_ReportType(XDR *xdrs, ReportType *objp) {
-	if (!xdr_enum(xdrs, (enum_t *) objp))
-		return FALSE;
-	return TRUE;
-}
-
-bool_t xdr_TSoderoReportMsg(XDR *xdrs, TSoderoReportMsg *objp) {
-	if (!xdr_ReportType(xdrs, &objp->type))
-		return FALSE;
-	switch (objp->type) {
-	case CLIENT_REGISTER:
-		if (!xdr_TSoderoClientRegisterMsg(xdrs,
-				&objp->TSoderoReportMsg_u.client_register))
-			return FALSE;
-		break;
-	case SODERO_NODES:
-		if (!xdr_array(xdrs,
-				(char **) &objp->TSoderoReportMsg_u.nodes.nodes_val,
-				(u_int *) &objp->TSoderoReportMsg_u.nodes.nodes_len, ~0,
-				sizeof(TSoderoNodeMsg), (xdrproc_t) xdr_TSoderoNodeMsg))
-			return FALSE;
-		break;
-	case ORIGIN_NODES:
-		if (!xdr_array(xdrs,
-				(char **) &objp->TSoderoReportMsg_u.nodes.nodes_val,
-				(u_int *) &objp->TSoderoReportMsg_u.nodes.nodes_len,
-				~0, sizeof(TSoderoNodeMsg), (xdrproc_t) xdr_TSoderoNodeMsg))
-			return FALSE;
-		break;
-	case SESSION_EVENT:
-		if (!xdr_TSoderoSessionMsg(xdrs, &objp->TSoderoReportMsg_u.session_event))
-			return FALSE;
-		break;
-	case METRIC_FINISH:
-		if (!xdr_TSoderoMetricFinishMsg(xdrs, &objp->TSoderoReportMsg_u.metric_finish))
-			return FALSE;
-		break;
-	case COUNT_METRIC:
-		if (!xdr_TSoderoCountMetricMsg(xdrs, &objp->TSoderoReportMsg_u.count_metric))
-			return FALSE;
-		break;
-	case PERIODIC_METRIC:
-		if (!xdr_TSoderoPeriodicMetricMsg(xdrs, &objp->TSoderoReportMsg_u.periodic_metric))
-			return FALSE;
-		break;
-	case SERVER_ACK:
-		if (!xdr_TSoderoServerAcknowledgeMsg(xdrs, &objp->TSoderoReportMsg_u.server_ack))
-			return FALSE;
-		break;
-	default:
-		break;
-	}
-	return TRUE;
-}
-
-#else
-
 bool_t xdr_TSoderoTCPSessionContent(XDR *xdrs, TSoderoTCPSessionContent *objp) {
 	if (!xdr_TSoderoSessionType(xdrs, &objp->type))
 		return FALSE;
@@ -809,6 +626,56 @@ bool_t xdr_TSoderoTCPReportMsg(XDR *xdrs, TSoderoTCPReportMsg *objp) {
 	return TRUE;
 }
 
+bool_t xdr_TSoderoCountMetricMsg(XDR *xdrs, TSoderoCountMetricMsg *objp) {
+	if (!xdr_u_int32_t(xdrs, &objp->agent_id))
+		return FALSE;
+	if (!xdr_vector(xdrs, (char *) objp->mac, 6, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+	if (!xdr_u_short(xdrs, &objp->vlan))
+		return FALSE;
+	if (!xdr_vector(xdrs, (char *) objp->ip, 16, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+	if (!xdr_array(xdrs, (char **) &objp->metrics.metrics_val,
+			(u_int *) &objp->metrics.metrics_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+	if (!xdr_u_int32_t(xdrs, &objp->time))
+		return FALSE;
+	if (!xdr_u_int64_t(xdrs, &objp->count))
+		return FALSE;
+	return TRUE;
+}
+
+bool_t xdr_TSoderoPeriodicMetricMsg(XDR *xdrs, TSoderoPeriodicMetricMsg *objp) {
+	if (!xdr_u_int32_t(xdrs, &objp->agent_id))
+		return FALSE;
+	if (!xdr_vector(xdrs, (char *) objp->mac, 6, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+	if (!xdr_u_short(xdrs, &objp->vlan))
+		return FALSE;
+	if (!xdr_vector(xdrs, (char *) objp->ip, 16, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+	if (!xdr_array(xdrs, (char **) &objp->metrics.metrics_val,
+			(u_int *) &objp->metrics.metrics_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+	if (!xdr_u_int32_t(xdrs, &objp->time))
+		return FALSE;
+	if (!xdr_u_int64_t(xdrs, &objp->count))
+		return FALSE;
+	if (!xdr_u_int64_t(xdrs, &objp->min))
+		return FALSE;
+	if (!xdr_u_int64_t(xdrs, &objp->max))
+		return FALSE;
+	if (!xdr_u_int64_t(xdrs, &objp->sum))
+		return FALSE;
+	return TRUE;
+}
+
 bool_t xdr_UDPReportType(XDR *xdrs, UDPReportType *objp) {
 	if (!xdr_enum(xdrs, (enum_t *) objp))
 		return FALSE;
@@ -834,5 +701,3 @@ bool_t xdr_TSoderoUDPReportMsg(XDR *xdrs, TSoderoUDPReportMsg *objp) {
 	}
 	return TRUE;
 }
-
-#endif

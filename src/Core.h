@@ -16,7 +16,9 @@
 #include "UDP.h"
 #include "DNS.h"
 #include "HTTP.h"
+#include "Core.h"
 #include "MySQL.h"
+#include "Tns.h"
 
 #define SODERO_RESULT_COUNT 2
 
@@ -31,8 +33,6 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef int (*TPacketHandler)(const PEtherPacket packet, int size, int length);
-typedef int (*TPcapHandler  )(const PEtherPacket packet, PCaptureHeader header);
 
 typedef struct SODERO_PERIOD_SINGLE_COUNTER {
 	TSoderoIPv4Counter ipv4;
@@ -119,6 +119,12 @@ typedef struct NODE_VALUE {
 			};
 			TSoderoMySQLValue value[2];
 		} mysql;
+		union {
+			struct {
+				TSoderoTNSValue incoming, outgoing;
+			};
+			TSoderoTNSValue value[2];
+		} tns;
 
 //		TSoderoDoubleDatum smtp;
 //		TSoderoDoubleDatum pop3;
@@ -221,9 +227,7 @@ extern void reset_period_result(PSoderoPeriodResult result);
 extern void initial_core(void);
 extern void release_core(void);
 
-extern void processTimeout(PSoderoSession session);
 extern int packetHandler(const PEtherPacket packet, int size, int length);
-extern int simulateHandler(const PEtherPacket packet, PPCAPPacketHeader header);
-extern int pcapHandler(const PEtherPacket packet, PCaptureHeader header);
+extern int pcapHandler(const PEtherPacket packet, const PPCAPPacketHeader header);
 
 #endif /* CORE_H_ */

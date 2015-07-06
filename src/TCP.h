@@ -217,6 +217,24 @@ typedef struct SODERO_MYSQL_STATUS {
 	unsigned char status;
 } TSoderoMySQLStatus, * PSoderopMySQLStatus;
 
+typedef struct SODERO_TNS_STATUS {
+	char * tail;
+	char * version;
+	unsigned int server;
+	unsigned int client;
+	union {
+		struct {
+			unsigned long long reqTime;
+			unsigned long long rspTime;
+			char * user;
+			char * database;
+		} login;
+	};
+	unsigned char protocol;
+	unsigned char serial;
+	unsigned char status;
+} TSoderoTnsStatus, * PSoderopTnsStatus;
+
 typedef struct SODERO_TCP_SET {
 	unsigned long long l;
 	unsigned long long h;
@@ -261,6 +279,7 @@ typedef struct SODERO_TCP_RECORD {
 	union {
 		TSoderoHTTPStatus  http ;
 		TSoderoMySQLStatus mysql;
+		TSoderoTnsStatus tns;
 	};
 	char buffer[2500];
 } TSoderoTCPRecord, * PSoderoTCPRecord;

@@ -10,8 +10,6 @@
 
 #define __DEBUG__
 
-#define __ASYNCHRONOUS_CAPTURE
-
 #define __CONTAINER_KEY__
 #define __TCP_REORDER_CHECK__
 
@@ -247,8 +245,6 @@
 #define PARSE_SUCCESS +1
 #define PARSE_PENDING  0
 #define PARSE_ERROR   -1
-
-typedef struct pcap_pkthdr TCaptureHeader, * PCaptureHeader;
 
 typedef struct TIME_STAMP {
 	unsigned int seconds;

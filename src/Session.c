@@ -324,8 +324,6 @@ PSoderoSession sodero_session_clean(PSoderoSessionManager object) {
 			result = curr;
 		}
 	}
-	bzero(object->heads, object->count * sizeof(*object->heads));
-	bzero(object->tails, object->count * sizeof(*object->tails));
 	return result;
 }
 
