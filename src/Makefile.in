@@ -97,7 +97,7 @@ am___top_builddir__debug_SummarizeEngine_OBJECTS = DPI.$(OBJEXT) \
 	Session.$(OBJEXT) Stream.$(OBJEXT) Summarize.$(OBJEXT) \
 	TCP.$(OBJEXT) UDP.$(OBJEXT) XDR.$(OBJEXT) \
 	flow_stats_api.$(OBJEXT) interface.$(OBJEXT) MySQL.$(OBJEXT) \
-	Report.$(OBJEXT) Tns.$(OBJEXT)
+	Tns.$(OBJEXT)
 __top_builddir__debug_SummarizeEngine_OBJECTS =  \
 	$(am___top_builddir__debug_SummarizeEngine_OBJECTS)
 __top_builddir__debug_SummarizeEngine_LDADD = $(LDADD)
@@ -272,7 +272,6 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     flow_stats_api.c \
     interface.c \
     MySQL.c \
-    Report.c \
     Tns.c
 
 all: all-am
