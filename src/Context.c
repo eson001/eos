@@ -21,13 +21,13 @@
 
 pcap_t * createDevice(const char * device) {
 	if (!device || strlen(device) == 0) return NULL;
-
+	
 	char errBuf[PCAP_ERRBUF_SIZE];
 #ifdef __PCAP_EASY__
 	pcap_t * pcap = pcap_open_live(device, 65535, 1, 100, errBuf);
 #else
-	pcap_t * pcap = pcap_create(device, nullptr);
-#endif
+	pcap_t * pcap = pcap_create(device, NULL);
+
 	if(pcap) {
 		printf("pcap_set_snaplen %d\n", pcap_set_snaplen(pcap, 65535));
 		printf("pcap_set_promisc %d\n", pcap_set_promisc(pcap, gCapturePromisc));
@@ -56,6 +56,8 @@ pcap_t * createDevice(const char * device) {
 		printf("error: pcap_open_live(): %s\n", errBuf);
 		return NULL;
 	}
+#endif
+
 
 	return pcap;
 }
