@@ -551,7 +551,7 @@ void simulate(const char * file) {
 void * capturer(void * handler) {
 	if (handler) {
 		gContext = createContext(createDevice(gDevice), nullptr);
-		if (!gContext) {
+		if (!gContext || !gContext->pcap) {
 			return nullptr;
 		}
 
