@@ -81,13 +81,11 @@ pcap_t * createDevice(const char * device) {
 //		struct bpf_program filter;
 //		printf("pcap_compile: %d\n", pcap_compile(pcap, &filter, "host 192.168.3.129", 0, mask));
 //		printf("pcap_setfilter: %d\n", pcap_setfilter(pcap, &filter));
-	} 
-#endif
-
-	if (!pcap) {
-		printf("error: pcap_open_live(): %s\n", errBuf);
+	} else {
+		printf("error: pcap_create(): fail\n");
 		return NULL;
 	}
+#endif
 
 	return pcap;
 }
