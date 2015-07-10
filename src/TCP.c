@@ -961,7 +961,7 @@ int processStream(PSoderoTCPSession session, const void * data, int size, int le
 
 	if (!value) return 0;
 
-	if (state->surgen) {
+	if (tcp->urg) {
 		data += state->surgen;
 		size -= state->surgen;
 		value->urgBytes += state->surgen;
