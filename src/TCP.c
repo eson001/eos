@@ -95,6 +95,8 @@ int pickLine(unsigned char * buffer, unsigned int length, PSoderoTCPValue value,
 
 	int result = value->offset - offset;
 	if (result > 0) {
+		if (result >= 1024)
+			result = 1023;
 		memcpy(buffer, value->buffer + offset, result);
 		offset = 0;
 	} else {
@@ -102,8 +104,13 @@ int pickLine(unsigned char * buffer, unsigned int length, PSoderoTCPValue value,
 		offset -= value->offset;
 	}
 
+	if (result >= 1024)
+			result = 1023;
+
 	for (unsigned int i = offset; i < size; i++) {
 		char c = data[i];
+		if (result >= 1024)
+			result = 1023;
 		buffer[result++] = c;
 		if (c == LF) return result;
 	}
@@ -881,6 +888,7 @@ void processTCPData(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 //			printf("Process TCP failure %d @ %p\n", gTotal.count, session);
 			session->flag = SESSION_TYPE_MINOR_UNKNOWN;
 			value->offset = 0;
+			return;
 		}
 
 		result += base;

@@ -224,7 +224,10 @@ unsigned long read_u64(struct cursor *cursor)
 
 void cursor_drop(struct cursor *cursor, size_t n)
 {
-    assert(cursor->cap_len >= n);
+    if (cursor->cap_len >= n)
+	return ;
+		
+//    assert(cursor->cap_len >= n);
     cursor->cap_len -= n;
     cursor->head += n;
 }
