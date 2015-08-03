@@ -189,6 +189,9 @@ int parseDNSAnswer(PSoderoApplicationDNS dns, char * data, int s, int offset, in
 	PSoderoDNSAnswerEntry entry, char * text, unsigned short * base) {
 	char domain[128], primary[128];
 	int current = offset;
+	
+	if (current >= s)
+		return 0;
 
 	bzero(domain, sizeof(domain));
 	current += parseDNSName(domain, data, s, current, 128, 0);
