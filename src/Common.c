@@ -924,6 +924,32 @@ void processE(PSoderoUnitDatum datum, int value) {
 	datum->count ++;
 }
 
+void processEE(PSoderoUnitDatum datum1, PSoderoUnitDatum datum2)
+{
+	if (!datum2->count)
+		return;
+
+	//printf("processEE:: %llx, %llx, %llx, %llx\r\n", datum2->count, datum2->max, datum2->min, datum2->sum);
+	if (datum1->count) {
+		datum1->sum += datum2->sum;
+		datum1->count += datum2->count;
+		if (datum1->min > datum2->min)
+			datum1->min = datum2->min;
+		if (datum1->max < datum2->max)
+			datum1->max = datum2->max;
+	} else {
+		datum1->sum = datum2->sum;
+		datum1->min = datum2->min;
+		datum2->max = datum2->max;
+		datum1->count = datum2->count;
+	}
+
+	datum2->count = 0;
+	datum2->min = 0;
+	datum2->max = 0;
+	datum2->sum = 0;
+}
+
 void processP(PSoderoPacketDatum datum, int value) {
 	processA(&datum->total, value);
 

@@ -1471,6 +1471,18 @@ const char * SODERO_REPORT_IDENT_HTTP_METHOD = "http.method";
 const char * SODERO_REPORT_IDENT_HTTP_ERROR  = "http.error" ;
 const char * SODERO_REPORT_IDENT_HTTP_RTT    = "http.rtt"   ;
 
+const char * SODERO_REPORT_IDENT_HTTP_REQ_TIME_MIN = "http.req_time.min";
+const char * SODERO_REPORT_IDENT_HTTP_REQ_TIME_MAX = "http.req_time.max";
+const char * SODERO_REPORT_IDENT_HTTP_REQ_TIME_AVG = "http.req_time.avg";
+
+const char * SODERO_REPORT_IDENT_HTTP_RES_TIME_MIN = "http.res_time.min";
+const char * SODERO_REPORT_IDENT_HTTP_RES_TIME_MAX = "http.res_time.max";
+const char * SODERO_REPORT_IDENT_HTTP_RES_TIME_AVG = "http.res_time.avg";
+
+const char * SODERO_REPORT_IDENT_HTTP_WAIT_TIME_MIN = "http.wait_time.min";
+const char * SODERO_REPORT_IDENT_HTTP_WAIT_TIME_MAX = "http.wait_time.max";
+const char * SODERO_REPORT_IDENT_HTTP_WAIT_TIME_AVG = "http.wait_time.avg";
+
 const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_COUNT     = "mysql.req_pkts" ;
 const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_BYTES     = "mysql.req_bytes";
 const char * SODERO_REPORT_IDENT_MYSQL_REQUEST_L2_BYTES  = "mysql.req_l2_bytes";
@@ -1646,6 +1658,24 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 		unsigned int       rttCount = v->l4.http.incoming.rttCount + v->l4.http.outgoing.rttCount;
 		if (rttCount)
 			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RTT, rttValue / rttCount, metricCount);
+
+		//printf("req time %llx, %llx, %llx, %llx\r\n", v->l4.http.outgoing.request.min, v->l4.http.outgoing.request.max, v->l4.http.outgoing.request.sum, v->l4.http.outgoing.request.count);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQ_TIME_MIN, v->l4.http.outgoing.request.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQ_TIME_MAX , v->l4.http.outgoing.request.max, metricCount);
+		if (v->l4.http.outgoing.request.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQ_TIME_AVG , v->l4.http.outgoing.request.sum / (v->l4.http.outgoing.request.count), metricCount);
+
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_WAIT_TIME_MIN, v->l4.http.outgoing.wait.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_WAIT_TIME_MAX , v->l4.http.outgoing.wait.max, metricCount);
+		if (v->l4.http.outgoing.wait.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_WAIT_TIME_AVG , v->l4.http.outgoing.wait.sum / (v->l4.http.outgoing.wait.count), metricCount);
+
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RES_TIME_MIN, v->l4.http.outgoing.response.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RES_TIME_MAX , v->l4.http.outgoing.response.max, metricCount);
+		if (v->l4.http.outgoing.response.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RES_TIME_AVG , v->l4.http.outgoing.response.sum / (v->l4.http.outgoing.response.count), metricCount);
 
 		//	MySQL
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_REQUEST_COUNT , v->l4.mysql.outgoing.value.count, metricCount);

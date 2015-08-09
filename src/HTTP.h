@@ -89,6 +89,8 @@ typedef struct SODERO_HTTP_VALUE {
 	unsigned long long rttValue;
 	unsigned int       rttCount;
 	unsigned int       l2;
+
+	TSoderoUnitDatum request,response,wait;
 //	unsigned int       method;
 //	unsigned int       error;
 //	TSoderoHTTPDatum request, response;
@@ -129,6 +131,8 @@ struct SODERO_APPLICATION_HTTP {
 	unsigned int req_time;	//	Time for sending request(ms)
 	unsigned int rsp_time;	//	Time for receiving response(ms)
 	unsigned int wait_time;	//	Time for waiting server(ms)
+
+	TSoderoUnitDatum request,response,wait;
 
 	//	pair
 	char * req_content_type;
