@@ -95,6 +95,7 @@ PSoderoApplicationHTTP getHTTPSession(PSoderoTCPSession owner, PHTTPDetectReques
 	application->req_version = detect->version;
 	application->url = dup_str((char*)detect->url);
 	application->req_step = HTTP_STEP_HEAD;
+	application->status =  HTTP_STATUE_REQ;
 	application->req_b = gTime;
 
 	if (owner->session) {
@@ -117,6 +118,7 @@ PSoderoApplicationHTTP setHTTPSession(PSoderoTCPSession owner, PHTTPDetectRespon
 			application->rsp_step  = HTTP_STEP_HEAD;
 			application->rsp_b = gTime;
 			if (application->req_e) {
+				processE(&application->request, application->req_e - application->req_b);
 				processE(&application->wait, gTime - application->req_e);
 			} else {
 				processE(&application->request, gTime - application->req_b);
@@ -330,10 +332,11 @@ void updateHTTPRequestState(PSoderoApplicationHTTP application, PTCPState state)
 	if (application) {
 		if (state->application == application) return;
 		state->application = application;
+		application->status = HTTP_STATUE_REQ;
 		application->req_e = gTime;
 		
-		if (!application->rsp_b)
-			processE(&application->request, gTime - application->req_b);
+		//if (!application->rsp_b)
+			//processE(&application->request, gTime - application->req_b);
 		application->req_pkts     ++;
 		application->req_bytes    += state->payload;
 		application->req_l2_bytes += state->length;
@@ -405,9 +408,18 @@ void updateHTTPResponseState(PSoderoApplicationHTTP application, PTCPState state
 	if (application) {
 		if (state->application == application) return;
 		state->application = application;
-		application->rsp_e = gTime;
-		if (application->rsp_b)
-			processE(&application->response, gTime - application->rsp_b);
+		
+		
+		if (state->ack && (application->status == HTTP_STATUE_REQ)) {
+			application->req_e = gTime;
+			application->status = HTTP_STATUE_REQ_ACK;
+//			printf("updateHTTPResponseState:: req_e %llx, %llx, %llx, %llx\r\n", gTime, application->req_e, application->owner->value.synTime, application->rsp_b);
+		} /*else {
+			application->rsp_e = gTime;
+			
+			if (application->rsp_b)
+				processE(&application->response, gTime - application->rsp_b);
+		}*/
 		
 		application->rsp_pkts     ++;
 		application->rsp_bytes    += state->payload;
@@ -923,18 +935,13 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	do {
 		PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
 		PNodeValue destNode = takeIPv4Node((TMACVlan){{ether->dest, ether->vlan}}, ip->dIP);
-		PSoderoApplicationHTTP application = session->session;
 		
 		if (sourNode) {
 			processA(&sourNode->l4.http.outgoing.value, size);
 			sourNode->l4.http.outgoing.l2 += length;
 			sourNode->l4.http.outgoing.rttValue += state->rttTime;
 			sourNode->l4.http.outgoing.rttCount += state->rtt;
-			if (application) {	
-				processEE(&sourNode->l4.http.outgoing.request, &(application->request));
-				processEE(&sourNode->l4.http.outgoing.wait, &(application->wait));
-				processEE(&sourNode->l4.http.outgoing.response, &(application->response));
-			}
+			
 		}
 		if (destNode) {
 			processA(&destNode->l4.http.incoming.value, size);
@@ -998,6 +1005,18 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	PSoderoApplicationHTTP application = session->session;
 	while (application) {
 		if (isDoneHTTPSession(application)) {
+			PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
+			application->rsp_e = gTime;
+			printf("updateHTTPState:: rsp_e %llx, %llx, %llx\r\n", gTime, application->req_e,application->req_b);
+			if (application->rsp_b)
+				processE(&application->response, gTime - application->rsp_b);
+
+//			printf("sourNode = %p\r\n", sourNode);
+			if (sourNode) {	
+				processEE(&sourNode->l4.http.outgoing.request, &(application->request));
+				processEE(&sourNode->l4.http.outgoing.wait, &(application->wait));
+				processEE(&sourNode->l4.http.outgoing.response, &(application->response));
+			}
 			PSoderoApplicationHTTP next = application->link;
 			application->link = nullptr;
 			sodero_pointer_add(getClosedApplications(), application);

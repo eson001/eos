@@ -58,6 +58,14 @@ enum {
 	HTTP_STEP_DONE,
 };
 
+enum {
+	HTTP_STATUE_REQ,
+	HTTP_STATUE_REQ_ACK,
+	HTTP_STATUE_RES,
+	HTTP_STATUE_RES_ACK,
+};
+
+
 #pragma pack(push, 1)
 
 typedef struct HTTP_DETECT_REQUEST {
@@ -182,6 +190,7 @@ struct SODERO_APPLICATION_HTTP {
 	long long rsp_fill;
 
 	unsigned char pipelined;	//	If the request is pipelined
+	int status;
 };
 
 #pragma pack(pop)
