@@ -44,6 +44,16 @@ enum tns_type {
     TNS_TYPE_MAX  = 15
 };
 
+enum tns_step {
+	TNS_STEP_REQ_START,
+	TNS_STEP_REQ_MORE,
+	TNS_STEP_REQ_END
+};
+
+enum TSoderoTnsMethod {
+	TNS_METHOD_LOGIN, TNS_METHOD_SQL, TNS_METHOD_PROCEDURE,
+};
+
 typedef struct SODERO_TNS_VALUE {
 	TSoderoFlowDatum   value;
 	unsigned int       count;	//	command count
@@ -52,6 +62,7 @@ typedef struct SODERO_TNS_VALUE {
 	unsigned long long rttValue;
 	unsigned int       rttCount;
 	unsigned int       l2;
+	TSoderoUnitDatum request,response,wait;
 } TSoderoTNSValue, * PSoderoTNSValue;
 
 typedef struct SODERO_ORACLE_HEAD {
@@ -109,12 +120,24 @@ typedef union SODERO_TNS_APPLICATION {
 				unsigned int       set;		//	total result set count of command's reponse
 				unsigned int       col;		//	total col of result set;
 				unsigned long long row;		//	Total row count of result set;
+				unsigned int       rsps;
 			};
 		};
 		unsigned int reqPending;	//	Oracle Block Pending - Request
 		unsigned int rspPending;	//	Oracle Block Pending - Response
+		
+		unsigned long long req_bytes;
+		unsigned int req_pkts;
+		unsigned long long req_l2_bytes;
+		unsigned long long rsp_bytes;
+		unsigned int rsp_pkts;
+		unsigned long long rsp_l2_bytes;
+
+		unsigned char req_aborted;	//	If the connection was closed when sending request
+		unsigned char rsp_aborted;	//	If the connection was closed when receiving response
+	
 //		char * tail;
-              char sql[2048];
+              char sql[1024];
 		unsigned char command;
 		unsigned char flow;			//	command flow's branch
 		unsigned char step;			//	flow's step
@@ -130,6 +153,7 @@ typedef union SODERO_TNS_PACKET_DETAIL {
 	struct {
 		unsigned char command;
 		unsigned char block;
+		unsigned char app_end;
 	};
 } TSoderoTnsPacketDetail, * PSoderoTnsPacketDetail;
 

@@ -956,7 +956,9 @@ void updateSessionState(PSoderoTCPSession session, int dir, PTCPState state) {
 		case SESSION_TYPE_MINOR_MYSQL:
 			updateMySQLState(session, dir * session->key.dir, state);
 			break;
-//		case SESSION_TYPE_MINOR_NONE:
+		case SESSION_TYPE_MINOR_ORACLE:
+			updateTnsState(session, dir * session->key.dir, state);
+			break;
 //		default:
 //			return;
 	}

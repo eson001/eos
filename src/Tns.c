@@ -224,7 +224,7 @@ unsigned long read_u64(struct cursor *cursor)
 
 void cursor_drop(struct cursor *cursor, size_t n)
 {
-    if (cursor->cap_len >= n)
+    if (cursor->cap_len <= n)
 	return ;
 		
 //    assert(cursor->cap_len >= n);
@@ -472,8 +472,8 @@ int detectTNS(PSoderoTCPSession session, PSoderoTCPValue value,
        head.reserved = read_u8(&cursor);
        head.header_check_sum = read_u16(&cursor);
 
-	data += sizeof(TOracleHead);
-	size -= sizeof(TOracleHead);
+	//data += sizeof(TOracleHead);
+	//size -= sizeof(TOracleHead);
 
 	if (head.check_sum || head.header_check_sum) {
 		LogErr("%s","check number is not zero\n");
@@ -484,7 +484,7 @@ int detectTNS(PSoderoTCPSession session, PSoderoTCPValue value,
 	PSoderoOracleConnect result = (PSoderoOracleConnect)buffer;
 	if (head.type == 1)
 	{
-	    if (parseOracleConnect(result, &cursor, size) ==PARSE_SUCCESS)
+	    if (parseOracleConnect(result, &cursor, size - sizeof(TOracleHead)) ==PARSE_SUCCESS)
 	    {
 	        session->value.tns.tail = session->value.buffer;
 	        session->value.tns.login.reqTime = gTime;
@@ -668,6 +668,60 @@ bool tns_parse_sql_query_oci(PSoderoTnsApplication application, struct cursor *c
     return true;
 }
 
+void updateTnsRequestState(PSoderoTnsApplication application, PTCPState state) {
+	if (application) {
+		if (state->application == application) return;
+		state->application = application;
+		application->req_pkts     ++;
+		application->req_bytes    += state->payload;
+		application->req_l2_bytes += state->length;
+		//application->reqRTTValue  += state->rttTime;
+		//application->reqRTTCount  += state->rtt;
+		if (state->rst)
+			application->req_aborted++;
+	}
+}
+
+void updateTnsResponseState(PSoderoTnsApplication application, PTCPState state) {
+	if (application) {
+		if (state->application == application) return;
+		state->application = application;
+		
+		application->rsp_pkts     ++;
+		application->rsp_bytes    += state->payload;
+		application->rsp_l2_bytes += state->length;
+		//application->rspRTTValue  += state->rttTime;
+		//application->rspRTTCount  += state->rtt;
+		if (state->rst)
+			application->rsp_aborted++;
+	}
+}
+
+void updateTnsState(PSoderoTCPSession session, int dir, PTCPState state) {
+	if (state->fin) {
+		free(session->session);
+		session->session = NULL;
+	}
+
+	do {
+		if (dir > 0) {
+			PSoderoTnsApplication application = session->session;
+			
+			if (application)
+				updateTnsRequestState (application, state);
+			break;
+		}
+		if (dir < 0) {
+			PSoderoTnsApplication application = session->session;
+			
+			if (application)
+				updateTnsResponseState(application, state);
+			break;
+		}
+	} while(false);
+}
+
+
 /*
  * If oci, we will fallback on start query guesstimation
  * | 1 byte                        |
@@ -706,13 +760,24 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
     PSoderoTnsApplication application = session->session;
     unsigned short data_flag = read_u16(cursor);
 
+	if (data_flag) {
+		if (application) {
+			sodero_pointer_add(getClosedApplications(), application);
+	        session->session = nullptr;
+	        session->value.tns.serial = 0;
+	        application = nullptr;
+		}
+		return (size <= total ? size : total) + sizeof(*head);
+	}
     unsigned char ttc_code = read_u8(cursor);
     unsigned char ttc_subcode = read_u8(cursor);
 
-    if (dir > 0)//	Response
-    {	
+    if (dir < 0)//	Response
+    {
         if (application) 
         {
+        	detail->block++;
+			application->rsps++;
             processA(&application->traffic.incoming, total);
             if (!application->rspFirst)
                 application->rspFirst = gTime;
@@ -720,47 +785,110 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
                 application->rspLast = gTime;
             if (total > size)
                 application->rspPending += total - size;
-            if ((ttc_code = 0x04) && (ttc_subcode == 0x01 || ttc_subcode == 0x02 || ttc_subcode == 0x05))
+            if ((ttc_code == 0x04) && (ttc_subcode == 0x01 || ttc_subcode == 0x02 || ttc_subcode == 0x05)
+				|| (ttc_code == 0x06) || (ttc_code == 0x08))
             {
-                sodero_pointer_add(getClosedApplications(), application);
-                session->session = nullptr;
-                session->value.tns.serial = 0;
-                application = nullptr;
+            	//end
+            	if (application && ((application->step == TNS_STEP_REQ_START) || (application->step == TNS_STEP_REQ_MORE))) {
+					detail->app_end = 1;
+
+					//processE(&application->request, application->reqLast - application->reqFirst);
+					//processE(&application->wait, application->rspFirst - application->reqLast);
+					//processE(&application->response, application->rspLast - application->rspFirst);
+				}
            }
+/*
+		   if ((ttc_code == 0x10) && (ttc_subcode == 0x17)) {
+		   		//response for 1169;
+		   }*/
+/*
+		   if ((ttc_code == 0x06) || (ttc_code == 0x08)) {
+		   		//query end now
+		   		if (application && ((application->step == TNS_STEP_REQ_START) || (application->step == TNS_STEP_REQ_MORE))) {
+	                sodero_pointer_add(getClosedApplications(), application);
+	                session->session = nullptr;
+	                session->value.tns.serial = 0;
+	                application = nullptr;
+				}
+		   		
+		   }*/
        } 
        else 
        {
            //	ToDo: Error Protocol
            LogErr("%s", "Empty applicaton on response\n");
-           return PARSE_ERROR;
+		   return (size <= total ? size : total) + sizeof(*head);
+           //return PARSE_ERROR;
        }
 
         return (size <= total ? size : total) + sizeof(*head);
     }
 
-    if (dir < 0) //	Request
-    {	
-        if (application) 
+    if (dir > 0) //	Request
+    {
+        if ((ttc_code == 0x03) && (ttc_subcode == 0x5e || ttc_subcode == 0x47 || ttc_subcode == 0x05))
         {
+        	if (application && (application->step == TNS_STEP_REQ_START)) {
+				application->step = TNS_STEP_REQ_MORE;
+        	} else {
+        		//query start 
+        		application = takeApplication(sizeof(TSoderoTnsApplication));
+				newApplication((PSoderoApplication)application, (PSoderoSession)session);
+				application->command = TNS_METHOD_SQL;
+				session->session = application;
+				application->step = TNS_STEP_REQ_START;
+				application->reqFirst = gTime;
+        	}
 
-            if ((ttc_code = 0x03) && (ttc_subcode == 0x5e || ttc_subcode == 0x47))
+			DROP_FIX(cursor, 1);
+            if (is_oci(cursor)) 
             {
-                DROP_FIX(cursor, 1);
-                if (is_oci(cursor)) 
-                {
-                    // Option is not prefix based, seems like an oci query
-                    tns_parse_sql_query_oci(application, cursor);
-                          
-                }
+                // Option is not prefix based, seems like an oci query
+                tns_parse_sql_query_oci(application, cursor);
+                      
             }
-                 
-         } 
-         else 
-         {
-             //	ToDo: Error Protocol
-           LogErr("%s", "Empty applicaton on request\n");
-           return PARSE_ERROR;
-         }
+
+			if (strstr(application, "PROCEDURE"))
+				application->command = TNS_METHOD_PROCEDURE;
+			
+        }
+
+		if ((ttc_code == 0x11) && ((ttc_subcode == 0x69) || (ttc_subcode == 0x78))) {
+			printf("parseTnsData:1169\r\n");
+			application = takeApplication(sizeof(TSoderoTnsApplication));
+			newApplication((PSoderoApplication)application, (PSoderoSession)session);
+			session->session = application;
+			application->command = TNS_METHOD_SQL;
+			application->step = TNS_STEP_REQ_START;
+			application->reqFirst = gTime;
+
+			DROP_FIX(cursor, 1);
+            if (is_oci(cursor)) 
+            {
+                // Option is not prefix based, seems like an oci query
+                tns_parse_sql_query_oci(application, cursor);
+                      
+            }
+
+			if (strstr(application, "PROCEDURE"))
+				application->command = TNS_METHOD_PROCEDURE;
+
+		}
+
+		printf("parseTnsData: application = %p\r\n", application);
+		if (application) 
+		{
+			if (application->step != TNS_STEP_REQ_MORE)
+		    	detail->command++;
+			application->reqLast = gTime;
+		} 
+		else 
+		{
+			 //	ToDo: Error Protocol
+			LogErr("%s", "Empty applicaton on request\n");
+			return (size <= total ? size : total) + sizeof(*head);
+           //return PARSE_ERROR;
+		}
          return (size <= total ? size : total) + sizeof(*head);
 
     }
@@ -768,24 +896,29 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
     return PARSE_ERROR;
 
 }
+int parseTnsConnect(PSoderoTnsPacketDetail detail, int size, int total) 
+{
+	return size;
+}
 
 int parseTnsAccept(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int size, int total) {
 	//	Login request or response must in one packet.
-	if (size < total) {
-		LogErr("Invalid packet Size %d - %u", size, total);
-		return DETECT_NEGATIVE;
-	}
+	//if (size < total) {
+		//LogErr("Invalid packet Size %d - %u", size, total);
+		//return DETECT_NEGATIVE;
+	//}
 		
 	session->value.tns.status = TNS_LOGIN_SUCCESS;
 
 	session->value.tns.login.rspTime = gTime;
-	PSoderoTnsApplication application = takeApplication(sizeof(TSoderoMySQLApplication));
+	PSoderoTnsApplication application = takeApplication(sizeof(TSoderoTnsApplication));
+	
 	detail->command++;
 	//gMySQLTake++;
 	newApplication((PSoderoApplication)application, (PSoderoSession)session);
 
 	char * tail = application->text;
-	application->command = 1;
+	application->command = TNS_METHOD_LOGIN;
 	application->status = session->value.tns.status;
 	application->reqTime = session->value.tns.login.reqTime;
 	application->rspTime = session->value.tns.login.rspTime;
@@ -815,7 +948,8 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 		} else {
 			//	ToDo: Error Protocol
 			LogErr("%s", "Empty applicaton on response\n");
-			return PARSE_ERROR;
+			//return PARSE_ERROR;
+			return 0;
 		}
 
 		return (size <= total ? size : total) + sizeof(*head);
@@ -833,14 +967,16 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 		} else {
 			//	ToDo: Error Protocol
 			LogErr("%s", "Empty applicaton on request\n");
-			return PARSE_ERROR;
+			//return PARSE_ERROR;
+			return 0;
 		}
 
 		return (size <= total ? size : total) + sizeof(*head);
 
 	}
 	LogErr("%s","command dir error");
-	return PARSE_ERROR;
+	//return PARSE_ERROR;
+	return 0;
 }
 
 int parseTnsApplication(PSoderoTnsPacketDetail detail, PSoderoTCPSession session,
@@ -857,14 +993,17 @@ int parseTnsApplication(PSoderoTnsPacketDetail detail, PSoderoTCPSession session
 
        cursor.cap_len = size;
        cursor.head = data;
-       cursor_drop(&cursor, 8);
+	cursor_drop(&cursor, 4);
 
 	PSoderoTnsApplication application = session->session;
 
 //	Incomplete MySQL packets, and there is not enough number of bytes
-	if ((size < total) && (size < TNS_BUFFER_SIZE)) return PARSE_PENDING;
+	if ((size > total)) return PARSE_PENDING;
        switch (head->type)
        {
+		   case TNS_CONNECT:
+		   	   return parseTnsConnect(detail, size, total);
+               break;
            case TNS_ACCEPT:
                return parseTnsAccept(detail, session, size, total);
                break;
@@ -987,6 +1126,31 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		//	Directly process current packet
 		const unsigned char * buffer = data + base - value->offset;
 		result = parseTnsPacket(&detail, session, dir, buffer, total, total);
+	}
+
+	if (detail.app_end == 1) {
+		PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
+
+		application = session->session;
+		if (application) {
+					
+	        sodero_pointer_add(getClosedApplications(), application);
+	        session->session = nullptr;
+	        session->value.tns.serial = 0;
+	       
+			if (sourNode) {	
+				//processEE(&sourNode->l4.tns.outgoing.request, &(application->request));
+				//processEE(&sourNode->l4.tns.outgoing.wait, &(application->wait));
+				//processEE(&sourNode->l4.tns.outgoing.response, &(application->response));
+				printf("processTNSPacket: +++w+++++%llx, %llx, %llx, %llx\r\n", application->reqFirst, application->reqLast, application->rspFirst, application->rspLast);
+				printf("processTNSPacket: +++w+++++%llx, %llx, %llx\r\n", application->reqLast - application->reqFirst, application->rspFirst - application->reqFirst, application->rspLast - application->rspFirst);
+				processE(&sourNode->l4.tns.outgoing.request, application->reqLast - application->reqFirst);
+				processE(&sourNode->l4.tns.outgoing.wait, application->rspFirst - application->reqFirst);
+				processE(&sourNode->l4.tns.outgoing.response, application->rspLast - application->rspFirst);
+			}
+			
+			application = nullptr;
+		}
 	}
 	if (result > 0) {
 		if (sourNode) {

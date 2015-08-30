@@ -336,11 +336,19 @@ struct TSoderoMySQLCommandMsg {
 };
 typedef struct TSoderoMySQLCommandMsg TSoderoMySQLCommandMsg;
 
+/*
 enum TSoderoTnsType {
 	TNS_TYPE_LOGIN, TNS_TYPE_COMMAND,
 };
 typedef enum TSoderoTnsType TSoderoTnsType;
+*/
 
+enum TSoderoOracleMethod {
+	ORACLE_METHOD_LOGIN, ORACLE_METHOD_SQL, ORACLE_METHOD_PROCEDURE,
+};
+typedef enum TSoderoOracleMethod TSoderoOracleMethod;
+
+/*
 struct TSoderoTnsLoginMsg {
 	u_int64_t session_id;
 	u_int64_t application_id;
@@ -374,6 +382,53 @@ struct TSoderoTnsCommandMsg {
 	u_int  set;		//	total result set count of command's reponse
 };
 typedef struct TSoderoTnsCommandMsg TSoderoTnsCommandMsg;
+*/
+
+struct TSoderoOracleMsg {
+	u_int64_t session_id;	//	Oracle 的会话ID
+	u_int64_t flow_id;	//	对应的TCP连接的flow id
+	TSoderoOracleMethod method;	//	登陆或者SQL活着Proc存储过程
+	struct {
+		u_int user_len;
+		u_char *user_val;
+	} user;				//	Oracle用户名
+	struct {
+		u_int database_len;
+		u_char *database_val;	//	Oracle数据库名
+	} database;
+	struct {
+		u_int statement_len;
+		u_char *statement_val;	//	SQL语句或存储过程名称
+	} statement;
+	struct {
+		u_int error_code_len;
+		u_char *error_code_val;	//	错误码
+	} error_code;
+	struct {
+		u_int error_msg_len;
+		u_char *error_msg_val;	//	错误信息
+	} error_msg;
+
+	u_int  req_time;		//	请求的时间
+	u_int  rsp_time;		//	返回的时间
+	u_int  wait_time;		//	等待的时间
+
+	u_int64_t req_bytes ;
+	u_int64_t req_pkts ;
+	u_int64_t reqLast ;
+	u_int64_t req_l2_bytes ;
+	u_int64_t rsp_bytes ;
+	u_int64_t rsp_pkts ;
+	u_int64_t rsp_l2_bytes ;
+	u_int64_t rsp_records ;	//	返回的记录数
+	u_int64_t rsp_fields ;	//	返回的字段数
+	u_int64_t rsp_datasets ;//	返回的数据集数
+	u_char client_abort;	//	是否客户端终止
+	u_char server_abort;	//	是否服务端终止
+
+};
+typedef struct TSoderoOracleMsg TSoderoOracleMsg;
+
 
 struct TSoderoMetricFinishMsg {
 	u_int time;
@@ -410,12 +465,10 @@ struct TSoderoTCPSessionContent {
 			};
 		} mysql;
 		struct {
-			TSoderoTnsType type;
-			union {
-				TSoderoTnsLoginMsg   login;
-				TSoderoTnsCommandMsg command;
-			};
+			TSoderoOracleMethod type;
+			TSoderoOracleMsg oracle_msg;
 		} tns;
+		
 	} TSoderoTCPSessionContent_u;
 };
 typedef struct TSoderoTCPSessionContent TSoderoTCPSessionContent;

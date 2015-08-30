@@ -851,16 +851,17 @@ int sodero_report_tns_application(PSoderoTnsApplication value, int flag) {
 		TSoderoTCPSessionContent * content = &msssage->session_content;
 		content->type = SESSION_TYPE_ORACLE;
 
-		if (value->command == 1) {
-			content->TSoderoTCPSessionContent_u.tns.type = MYSQL_TYPE_LOGIN;
-			TSoderoTnsLoginMsg * record = & content->TSoderoTCPSessionContent_u.tns.login;
+		if (value->command == TNS_METHOD_LOGIN) {
+			content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_LOGIN;
+			TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
 			record->session_id = owner->id;
-			record->application_id = value->id;
-			record->reqTime = value->reqTime;
-			record->rspTime = value->rspTime;
+			record->flow_id = value->id;
+			record->req_time = value->reqLast -  value->reqFirst;
+			record->rsp_time = value->rspLast - value->rspFirst;
+			record->wait_time = value->rspFirst - value->reqLast;
 			SODERO_SAFE_TEXT(record, user, value->user);
 			SODERO_SAFE_TEXT(record, database, value->database);
-			record->status = value->status;
+			//record->status = value->status;
 
 			if (isExportReport()) {
 				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
@@ -871,22 +872,55 @@ int sodero_report_tns_application(PSoderoTnsApplication value, int flag) {
 					value->reqTime, value->rspTime, value->status,
 					value->user ? value->user : "", value->database ? value->database : "");
 			}
-		} else {
-			content->TSoderoTCPSessionContent_u.tns.type = TNS_TYPE_COMMAND;
-			TSoderoTnsCommandMsg * record = & content->TSoderoTCPSessionContent_u.tns.command;
+		} else if (value->command == TNS_METHOD_SQL){
+			content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_SQL;
+			TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
 			record->session_id = owner->id;
-			record->application_id = value->id;
-			record->reqFirst = value->reqFirst;
-			record->reqLast = value->reqLast;
-			record->reqCount = value->traffic.outgoing.count;
-			record->reqBytes = value->traffic.outgoing.bytes;
-			record->rspCount = value->traffic.incoming.count;
-			record->rspBytes = value->traffic.incoming.bytes;
-			record->rspFirst  = value->rspFirst;
-			record->rspLast = value->rspLast;
-			record->row = value->row;
-			record->col = value->col;
-			record->set = value->set;
+			record->flow_id = value->id;
+			record->req_time = value->reqLast -  value->reqFirst;
+			record->rsp_time = value->rspLast - value->rspFirst;
+			record->wait_time = value->rspFirst - value->reqLast;
+			//record->reqCount = value->traffic.outgoing.count;
+			record->req_bytes = value->traffic.outgoing.bytes;
+			record->req_pkts = value->traffic.outgoing.count;
+			record->req_l2_bytes = value->req_l2_bytes;
+			//record->rspCount = value->traffic.incoming.count;
+			record->rsp_bytes = value->traffic.incoming.bytes;
+			record->rsp_pkts = value->traffic.incoming.count;
+			record->rsp_l2_bytes = value->rsp_l2_bytes;
+			record->rsp_records = value->rsps;
+			record->rsp_datasets = value->set;
+			
+			//record->row = value->row;
+			//record->col = value->col;
+			//record->set = value->set;
+
+			if (isExportReport()) {
+				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
+					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+					owner->id, value->id, value->serial,
+					value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
+			}
+		}else {
+			content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_PROCEDURE;
+			TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
+			record->session_id = owner->id;
+			record->flow_id = value->id;
+			record->req_time = value->reqLast -  value->reqFirst;
+			record->rsp_time = value->rspLast - value->rspFirst;
+			record->wait_time = value->rspFirst - value->reqLast;
+			//record->reqCount = value->traffic.outgoing.count;
+			record->req_bytes = value->traffic.outgoing.bytes;
+			record->req_pkts = value->traffic.outgoing.count;
+			record->req_l2_bytes = value->req_l2_bytes;
+			//record->rspCount = value->traffic.incoming.count;
+			record->rsp_bytes = value->traffic.incoming.bytes;
+			record->rsp_pkts = value->traffic.incoming.count;
+			record->rsp_l2_bytes = value->rsp_l2_bytes;
+			record->rsp_records = value->rsps;
+			record->rsp_datasets = value->set;
 
 			if (isExportReport()) {
 				printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
@@ -995,52 +1029,87 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 		TSoderoTCPSessionContent * content = &msssage->session_content;
 		content->type = SESSION_TYPE_ORACLE;
 
-		if (value->command == 1) {
-			content->TSoderoTCPSessionContent_u.tns.type = TNS_TYPE_LOGIN;
-			TSoderoTnsLoginMsg * record = & content->TSoderoTCPSessionContent_u.tns.login;
-			record->session_id = owner->id;
-			record->application_id = value->id;
-			record->reqTime = value->reqTime;
-			record->rspTime = value->rspTime;
-			SODERO_SAFE_TEXT(record, user, value->user);
-			SODERO_SAFE_TEXT(record, database, value->database);
-			record->status = value->status;
+		
+		if (value->command == TNS_METHOD_LOGIN) {
+					content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_LOGIN;
+					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
+					record->session_id = owner->id;
+					record->flow_id = value->id;
+					record->req_time = value->reqLast -  value->reqFirst;
+					record->rsp_time = value->rspLast - value->rspFirst;
+					record->wait_time = value->rspFirst - value->reqLast;
+					SODERO_SAFE_TEXT(record, user, value->user);
+					SODERO_SAFE_TEXT(record, database, value->database);
+					//record->status = value->status;
+		
+					if (isExportReport()) {
+						printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+								"\ttime %llu to %llu status %u user %s database %s\n",
+							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+							owner->id, value->id, value->serial,
+							value->reqTime, value->rspTime, value->status,
+							value->user ? value->user : "", value->database ? value->database : "");
+					}
+				} else if (value->command == TNS_METHOD_SQL){
+					content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_SQL;
+					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
+					record->session_id = owner->id;
+					record->flow_id = value->id;
+					record->req_time = value->reqLast -  value->reqFirst;
+					record->rsp_time = value->rspLast - value->rspFirst;
+					record->wait_time = value->rspFirst - value->reqLast;
+					SODERO_SAFE_TEXT(record, database, value->sql);
+					//record->reqCount = value->traffic.outgoing.count;
+					record->req_bytes = value->req_bytes;
+					record->req_pkts = value->traffic.outgoing.count;
+					record->req_l2_bytes = value->req_l2_bytes;
+					//record->rspCount = value->traffic.incoming.count;
+					record->rsp_bytes = value->rsp_bytes;
+					record->rsp_pkts = value->traffic.incoming.count;
+					record->rsp_l2_bytes = value->rsp_l2_bytes;
+					record->rsp_records = value->rsps; /* not support now */
+					record->rsp_datasets = value->set; /* not support now */
+		
+					if (isExportReport()) {
+						printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+								"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
+							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+							owner->id, value->id, value->serial,
+							value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
+					}
+				}else {
+					content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_PROCEDURE;
+					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
+					record->session_id = owner->id;
+					record->flow_id = value->id;
+					record->req_time = value->reqLast -  value->reqFirst;
+					record->rsp_time = value->rspLast - value->rspFirst;
+					record->wait_time = value->rspFirst - value->reqLast;
 
-			if (isExportReport()) {
-				printf("Report - Oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
-						"\ttime %llu to %llu status %u user %s database %s\n",
-					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
-					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
-					owner->id, value->id, value->serial,
-					value->reqTime, value->rspTime, value->status,
-					value->user ? value->user : "", value->database ? value->database : "");
-			}
-		} else {
-			content->TSoderoTCPSessionContent_u.tns.type =TNS_TYPE_COMMAND;
-			TSoderoTnsCommandMsg * record = & content->TSoderoTCPSessionContent_u.tns.command;
-			record->session_id = owner->id;
-			record->application_id = value->id;
-			record->reqFirst = value->reqFirst;
-			record->reqLast = value->reqLast;
-			record->reqCount = value->traffic.outgoing.count;
-			record->reqBytes = value->traffic.outgoing.bytes;
-			record->rspCount = value->traffic.incoming.count;
-			record->rspBytes = value->traffic.incoming.bytes;
-			record->rspFirst  = value->rspFirst;
-			record->rspLast = value->rspLast;
-			record->row = value->row;
-			record->col = value->col;
-			record->set = value->set;
-
-			if (isExportReport()) {
-				printf("Report - Oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
-						"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
-					owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
-					owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
-					owner->id, value->id, value->serial,
-					value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
-			}
-		}
+					SODERO_SAFE_TEXT(record, database, value->sql);
+					//record->reqCount = value->traffic.outgoing.count;
+					record->req_bytes = value->traffic.outgoing.bytes;
+					record->req_pkts = value->traffic.outgoing.count;
+					record->req_l2_bytes = value->req_l2_bytes;
+					//record->rspCount = value->traffic.incoming.count;
+					record->rsp_bytes = value->traffic.incoming.bytes;
+					record->rsp_pkts = value->traffic.incoming.count;
+					record->rsp_l2_bytes = value->rsp_l2_bytes;
+					record->rsp_records = value->rsps;
+					record->rsp_datasets = value->set;
+		
+					if (isExportReport()) {
+						printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+								"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
+							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
+							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
+							owner->id, value->id, value->serial,
+							value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
+					}
+				}
+		
 
 		if(sodero_xdr_tcp_message(&gTCPSocket, report))
 			result++;
@@ -1505,6 +1574,18 @@ const char * SODERO_REPORT_IDENT_ORACLE_COMMAND = "oracle.reqs";
 const char * SODERO_REPORT_IDENT_ORACLE_BLOCK   = "oracle.blocks";
 const char * SODERO_REPORT_IDENT_ORACLE_RTT     = "oracle.rtt";
 
+const char * SODERO_REPORT_IDENT_ORACLE_REQ_TIME_MIN = "oracle.req_time.min";
+const char * SODERO_REPORT_IDENT_ORACLE_REQ_TIME_MAX = "oracle.req_time.max";
+const char * SODERO_REPORT_IDENT_ORACLE_REQ_TIME_AVG = "oracle.req_time.avg";
+
+const char * SODERO_REPORT_IDENT_ORACLE_RES_TIME_MIN = "oracle.res_time.min";
+const char * SODERO_REPORT_IDENT_ORACLE_RES_TIME_MAX = "oracle.res_time.max";
+const char * SODERO_REPORT_IDENT_ORACLE_RES_TIME_AVG = "oracle.res_time.avg";
+
+const char * SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_MIN = "oracle.wait_time.min";
+const char * SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_MAX = "oracle.wait_time.max";
+const char * SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_AVG = "oracle.wait_time.avg";
+
 const char * SODERO_REPORT_IDENT_DNS_REQUEST_COUNT  = "dns.req_pkts" ;
 const char * SODERO_REPORT_IDENT_DNS_REQUEST_BYTES  = "dns.req_bytes";
 const char * SODERO_REPORT_IDENT_DNS_RESPONSE_COUNT  = "dns.rsp_pkts" ;
@@ -1705,6 +1786,24 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_COMMAND, v->l4.tns.outgoing.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_BLOCK  , v->l4.tns.incoming.block, metricCount);
+
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_MIN, v->l4.tns.outgoing.request.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_MAX , v->l4.tns.outgoing.request.max, metricCount);
+		if (v->l4.http.outgoing.request.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_AVG , v->l4.tns.outgoing.request.sum / (v->l4.http.outgoing.request.count), metricCount);
+
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_MIN, v->l4.tns.outgoing.wait.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_MAX , v->l4.tns.outgoing.wait.max, metricCount);
+		if (v->l4.http.outgoing.wait.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_AVG , v->l4.tns.outgoing.wait.sum / (v->l4.http.outgoing.wait.count), metricCount);
+
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_MIN, v->l4.tns.outgoing.response.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_MAX , v->l4.tns.outgoing.response.max, metricCount);
+		if (v->l4.http.outgoing.response.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_AVG , v->l4.tns.outgoing.response.sum / (v->l4.http.outgoing.response.count), metricCount);
 
 		rttValue = v->l4.tns.incoming.rttValue + v->l4.tns.outgoing.rttValue;
 		rttCount = v->l4.tns.incoming.rttCount + v->l4.tns.outgoing.rttCount;
