@@ -1563,10 +1563,12 @@ const char * SODERO_REPORT_IDENT_MYSQL_COMMAND = "mysql.reqs";
 const char * SODERO_REPORT_IDENT_MYSQL_BLOCK   = "mysql.blocks";
 const char * SODERO_REPORT_IDENT_MYSQL_RTT     = "mysql.rtt";
 
-const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT     = "oracle.req_pkts" ;
+const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT     = "oracle.reqs" ;
+const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_PKT_COUNT = "oracle.req_pkts" ;
 const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_BYTES     = "oracle.req_bytes";
 const char * SODERO_REPORT_IDENT_ORACLE_REQUEST_L2_BYTES  = "oracle.req_l2_bytes";
-const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT    = "oracle.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT    = "oracle.rsps" ;
+const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_PKT_COUNT    = "oracle.rsp_pkts" ;
 const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_BYTES    = "oracle.rsp_bytes";
 const char * SODERO_REPORT_IDENT_ORACLE_RESPONSE_L2_BYTES = "oracle.rsp_l2_bytes";
 
@@ -1776,15 +1778,17 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_MYSQL_RTT, rttValue / rttCount, metricCount);
 
 	       //	Oracle
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT , v->l4.tns.outgoing.value.count, metricCount);
+	    SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT , v->l4.tns.outgoing.reqs, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_PKT_COUNT , v->l4.tns.outgoing.value.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_BYTES , v->l4.tns.outgoing.value.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT, v->l4.tns.incoming.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT, v->l4.tns.incoming.rsps, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_PKT_COUNT, v->l4.tns.incoming.value.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_BYTES, v->l4.tns.incoming.value.bytes, metricCount);
 
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_L2_BYTES , v->l4.tns.outgoing.l2, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_L2_BYTES, v->l4.tns.incoming.l2, metricCount);
 
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_COMMAND, v->l4.tns.outgoing.count, metricCount);
+		//SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_COMMAND, v->l4.tns.outgoing.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_BLOCK  , v->l4.tns.incoming.block, metricCount);
 
 		

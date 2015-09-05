@@ -761,6 +761,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
     unsigned short data_flag = read_u16(cursor);
 
 	if (data_flag) {
+		detail->reqs++;
 		if (application) {
 			sodero_pointer_add(getClosedApplications(), application);
 	        session->session = nullptr;
@@ -791,7 +792,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
             	//end
             	if (application && ((application->step == TNS_STEP_REQ_START) || (application->step == TNS_STEP_REQ_MORE))) {
 					detail->app_end = 1;
-
+					detail->rsps++;
 					//processE(&application->request, application->reqLast - application->reqFirst);
 					//processE(&application->wait, application->rspFirst - application->reqLast);
 					//processE(&application->response, application->rspLast - application->rspFirst);
@@ -828,6 +829,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
     {
         if ((ttc_code == 0x03) && (ttc_subcode == 0x5e || ttc_subcode == 0x47 || ttc_subcode == 0x05))
         {
+        	detail->reqs = 1;
         	if (application && (application->step == TNS_STEP_REQ_START)) {
 				application->step = TNS_STEP_REQ_MORE;
         	} else {
@@ -855,6 +857,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 
 		if ((ttc_code == 0x11) && ((ttc_subcode == 0x69) || (ttc_subcode == 0x78))) {
 			printf("parseTnsData:1169\r\n");
+			detail->reqs = 1;
 			application = takeApplication(sizeof(TSoderoTnsApplication));
 			newApplication((PSoderoApplication)application, (PSoderoSession)session);
 			session->session = application;
@@ -898,6 +901,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 }
 int parseTnsConnect(PSoderoTnsPacketDetail detail, int size, int total) 
 {
+	detail->reqs++;
 	return size;
 }
 
@@ -909,7 +913,7 @@ int parseTnsAccept(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int
 	//}
 		
 	session->value.tns.status = TNS_LOGIN_SUCCESS;
-
+	detail->reqs++;
 	session->value.tns.login.rspTime = gTime;
 	PSoderoTnsApplication application = takeApplication(sizeof(TSoderoTnsApplication));
 	
@@ -1049,6 +1053,29 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 
 	PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
 	PNodeValue destNode = takeIPv4Node((TMACVlan){{ether->dest, ether->vlan}}, ip->dIP);
+
+	if (sourNode) {
+		processA(&sourNode->l4.tns.outgoing.value, size);
+		sourNode->l4.tns.outgoing.l2 += length;
+		sourNode->l4.tns.outgoing.rttValue += state->rttTime;
+		sourNode->l4.tns.outgoing.rttCount += state->rtt;
+
+		sourNode->l4.tns.outgoing.block = g_packet_index;
+		sourNode->l4.tns.incoming.block = g_packet_index;
+		
+	}
+	
+	if (destNode) {
+		processA(&destNode->l4.tns.incoming.value, size);
+		destNode->l4.tns.incoming.l2 += length;
+		destNode->l4.tns.incoming.rttValue += state->rttTime;
+		destNode->l4.tns.incoming.rttCount += state->rtt;
+
+		destNode->l4.tns.outgoing.block = g_packet_index;
+		destNode->l4.tns.incoming.block = g_packet_index;
+	}
+
+	#if 0
 	if (dir > 0) {
 		if (sourNode) {
 			processA(&sourNode->l4.tns.outgoing.value, size);
@@ -1077,7 +1104,8 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 			destNode->l4.tns.incoming.rttCount += state->rtt;
 		}
 	}
-
+	#endif
+	
 	PSoderoTnsApplication application = session->session;
 	while (application) {
 		//	Check Session Pending Data
@@ -1129,7 +1157,7 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	}
 
 	if (detail.app_end == 1) {
-		PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
+		//PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
 
 		application = session->session;
 		if (application) {
@@ -1152,15 +1180,25 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 			application = nullptr;
 		}
 	}
-	if (result > 0) {
+	
+	if (dir > 0) {
 		if (sourNode) {
-			sourNode->l4.tns.outgoing.count += detail.command;
-			sourNode->l4.tns.outgoing.block += detail.block  ;
+			sourNode->l4.tns.outgoing.reqs += detail.reqs;
 		}
 		if (destNode) {
-			destNode->l4.tns.incoming.count += detail.command;
-			sourNode->l4.tns.outgoing.block += detail.block  ;
+			sourNode->l4.tns.incoming.rsps += detail.rsps; 
 		}
+		return;
+	}
+	
+	if (dir < 0) {	//	response
+		if (sourNode) {
+			sourNode->l4.tns.outgoing.reqs += detail.reqs;
+		}
+		if (destNode) {
+			sourNode->l4.tns.incoming.rsps += detail.rsps; 
+		}
+		return;
 	}
 	
 	return result < 0 ? result : done + result;

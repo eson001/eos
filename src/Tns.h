@@ -58,6 +58,8 @@ typedef struct SODERO_TNS_VALUE {
 	TSoderoFlowDatum   value;
 	unsigned int       count;	//	command count
 	unsigned int       block;	//	block count
+	unsigned int       reqs;
+	unsigned int       rsps;
 
 	unsigned long long rttValue;
 	unsigned int       rttCount;
@@ -154,6 +156,8 @@ typedef union SODERO_TNS_PACKET_DETAIL {
 		unsigned char command;
 		unsigned char block;
 		unsigned char app_end;
+		unsigned int reqs;
+		unsigned int rsps;
 	};
 } TSoderoTnsPacketDetail, * PSoderoTnsPacketDetail;
 
