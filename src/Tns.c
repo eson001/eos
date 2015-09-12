@@ -761,8 +761,8 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
     unsigned short data_flag = read_u16(cursor);
 
 	if (data_flag) {
-		detail->reqs++;
 		if (application) {
+			detail->reqs++;
 			sodero_pointer_add(getClosedApplications(), application);
 	        session->session = nullptr;
 	        session->value.tns.serial = 0;
@@ -770,7 +770,19 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		}
 		return (size <= total ? size : total) + sizeof(*head);
 	}
+
     unsigned char ttc_code = read_u8(cursor);
+	if (ttc_code == 0x09) { //oracle complite
+		if (application) {
+			detail->reqs++;
+			sodero_pointer_add(getClosedApplications(), application);
+	        session->session = nullptr;
+	        session->value.tns.serial = 0;
+	        application = nullptr;
+		}
+		return (size <= total ? size : total) + sizeof(*head);
+	}
+	
     unsigned char ttc_subcode = read_u8(cursor);
 
     if (dir < 0)//	Response
