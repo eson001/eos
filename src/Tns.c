@@ -1059,9 +1059,6 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		sourNode->l4.tns.outgoing.l2 += length;
 		sourNode->l4.tns.outgoing.rttValue += state->rttTime;
 		sourNode->l4.tns.outgoing.rttCount += state->rtt;
-
-		sourNode->l4.tns.outgoing.block = g_packet_index;
-		sourNode->l4.tns.incoming.block = g_packet_index;
 		
 	}
 	
@@ -1070,9 +1067,6 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		destNode->l4.tns.incoming.l2 += length;
 		destNode->l4.tns.incoming.rttValue += state->rttTime;
 		destNode->l4.tns.incoming.rttCount += state->rtt;
-
-		destNode->l4.tns.outgoing.block = g_packet_index;
-		destNode->l4.tns.incoming.block = g_packet_index;
 	}
 
 	#if 0
@@ -1170,8 +1164,8 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 				//processEE(&sourNode->l4.tns.outgoing.request, &(application->request));
 				//processEE(&sourNode->l4.tns.outgoing.wait, &(application->wait));
 				//processEE(&sourNode->l4.tns.outgoing.response, &(application->response));
-				printf("processTNSPacket: +++w+++++%llx, %llx, %llx, %llx\r\n", application->reqFirst, application->reqLast, application->rspFirst, application->rspLast);
-				printf("processTNSPacket: +++w+++++%llx, %llx, %llx\r\n", application->reqLast - application->reqFirst, application->rspFirst - application->reqFirst, application->rspLast - application->rspFirst);
+				//printf("processTNSPacket: +++w+++++%llx, %llx, %llx, %llx\r\n", application->reqFirst, application->reqLast, application->rspFirst, application->rspLast);
+				//printf("processTNSPacket: +++w+++++%llx, %llx, %llx\r\n", application->reqLast - application->reqFirst, application->rspFirst - application->reqFirst, application->rspLast - application->rspFirst);
 				processE(&sourNode->l4.tns.outgoing.request, application->reqLast - application->reqFirst);
 				processE(&sourNode->l4.tns.outgoing.wait, application->rspFirst - application->reqFirst);
 				processE(&sourNode->l4.tns.outgoing.response, application->rspLast - application->rspFirst);
@@ -1199,6 +1193,17 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 			sourNode->l4.tns.incoming.rsps += detail.rsps; 
 		}
 		return;
+	}
+	
+	if (result > 0) {
+		if (sourNode) {
+			sourNode->l4.tns.outgoing.count += detail.command;
+			sourNode->l4.tns.outgoing.block += detail.block  ;
+		}
+		if (destNode) {
+			destNode->l4.tns.incoming.count += detail.command;
+			sourNode->l4.tns.outgoing.block += detail.block  ;
+		}
 	}
 	
 	return result < 0 ? result : done + result;
