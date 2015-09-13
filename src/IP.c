@@ -42,6 +42,7 @@ int processIPv4Packet(const void * data, int size, int length, PEtherHeader ethe
 	PIPPacket packet = (PIPPacket) data;
 	PSoderoIPv4PeriodResult result = &getPeriodResult()->protocol.l3.ipv4;
 
+	g_ether = ether;
 	processA(&gIPv4, length);
 
 	processA(&result->total, size);

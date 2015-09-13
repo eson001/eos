@@ -60,6 +60,8 @@ const char * tcp_application_name(int type) {
 			return "TCP";
 		case SESSION_TYPE_MINOR_HTTP:
 			return "HTTP";
+		case SESSION_TYPE_MINOR_HTTPS:
+			return "HTTPS";
 		case SESSION_TYPE_MINOR_UNKNOWN:
 			return "Unknown";
 	}

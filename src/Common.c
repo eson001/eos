@@ -329,6 +329,7 @@ void freeApplicationData(PSoderoApplication application) {
 	case IPv4_TYPE_TCP:
 		switch(flag) {
 			case SESSION_TYPE_MINOR_HTTP:
+			case SESSION_TYPE_MINOR_HTTPS:
 				freeApplicationHTTP((PSoderoApplicationHTTP)application);
 #ifdef __EXPORT_STATISTICS__
 				gHTTPFree++;

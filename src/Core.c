@@ -24,12 +24,20 @@
 #include "Report.h"
 #include "Logic.h"
 #include "Core.h"
+#include <pcap.h>
+#include "https.h"
+#include "sslol.h"
 
 TNodeIndex gNode;
 
 //	Core Data!!!
 //	All actived sessions hash map BODY
 PSoderoTable gSessions;
+PSoderoTCPSession gCurSession;
+TTCPState gState;
+PEtherHeader g_ether;
+PTCPHeader g_tcp;
+PIPHeader g_pip;
 
 //	All actived sessions time queue	DONE
 PSoderoSessionManager gSessionManager;
@@ -384,9 +392,15 @@ int packetHandler(const PEtherPacket packet, int size, int length) {
 
 int pcapHandler(const PEtherPacket packet, PPCAPPacketHeader header) {
 	sodero_report_result(timerHandler(header->time.usecond + header->time.seconds * uSecsPerSec), getSessionManager());
+	struct pcap_pkthdr pth_header;
+	pth_header.ts.tv_sec = header->time.seconds;
+	pth_header.ts.tv_usec = header->time.usecond;
+	pth_header.caplen = header->size;
+	pth_header.len = header->length;
 
 	if (packet) {
 		processEtherPacket(packet, header->size, header->length);
+		sslol_process(&pth_header, (const u_char *)packet);
 #ifndef __SKIP_SPEED__
 		gBytes += header->length;
 #endif

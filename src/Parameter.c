@@ -30,6 +30,7 @@ int gCaptureBuffer  = CAPTURE_BUFFER ;
 
 int gCheck = 0;
 const char * gDebug   = nullptr;
+const char * gSslolConf = nullptr;
 const char * gDevice  = "eth9";
 const char * gServer  = "localhost";
 const char * gService = SODERO_REPORT_SERVICE;
@@ -63,6 +64,7 @@ struct option longopts[] = {
 		{ "server"   , required_argument, NULL, 'h'},
 		{ "service"  , required_argument, NULL, 'v'},
 		{ "dump"     , required_argument, NULL, 'e'},
+		{ "sslol"	 , required_argument, NULL, 'x'},
 	};
 
 void usege(void) {
@@ -87,13 +89,14 @@ void usege(void) {
 	printf("                 [Err:0, Wrnn:1, Info:2, Dbg:3]\n");
 	printf("-e --dump        dump level\n");
 	printf("                 [verbose|detail|report]\n");
+	printf("-x --httpsconf   https offload config file\n");	
 	exit(0);
 }
 
 void initArguments(int argc, char** argv) {
 	srandom(time(NULL));
 	int result;
-	while((result = getopt_long(argc, argv, "ab:c:e:g:h:i:l:n:ps:t:v:d:", longopts, NULL)) != -1) {
+	while((result = getopt_long(argc, argv, "ab:c:e:g:h:i:l:n:ps:t:v:d:x:", longopts, NULL)) != -1) {
 		switch (result) {
 		case 'a':
 			gAlign = true;
@@ -193,6 +196,9 @@ void initArguments(int argc, char** argv) {
 				}	
 			} while(false);
 			break;
+		case 'x':
+			gSslolConf = optarg;
+			break;			
 		default:
 			usege();
 		}

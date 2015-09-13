@@ -195,6 +195,7 @@ int isExportApplication(int proto, int flag) {
 	if ((gCheck & SODERO_CHECK_HTTP) && (proto == IPv4_TYPE_TCP) && (flag == SESSION_TYPE_MINOR_HTTP )) return true;
 	if ((gCheck & SODERO_CHECK_HTTP) && (proto == IPv4_TYPE_TCP) && (flag == SESSION_TYPE_MINOR_MYSQL)) return true;
 	if ((gCheck & SODERO_CHECK_DNS ) && (proto == IPv4_TYPE_UDP) && (flag == SESSION_TYPE_MINOR_DNS  )) return true;
+	if ((gCheck & SODERO_CHECK_HTTP) && (proto == IPv4_TYPE_TCP) && (flag == SESSION_TYPE_MINOR_HTTPS )) return true;
 	return false;
 }
 
@@ -2141,6 +2142,7 @@ int sodero_report_tcp_application(PSoderoApplication application, int flag) {
 
 	switch (session->flag) {
 		case SESSION_TYPE_MINOR_HTTP:
+		case SESSION_TYPE_MINOR_HTTPS:
 			if (flag & SODERO_REPORT_HEAD) {
 				if (!sodero_report_http_head((PSoderoApplicationHTTP)application, flag)) return false;
 				break;

@@ -1197,6 +1197,8 @@ int processTCPPacket(const void * data, int size, int length, PIPHeader ip, PEth
 	void * payload_data = TCP_OVERLOAD_DATA(data, bytes);
 	int    payload_size = TCP_OVERLOAD_SIZE(size, bytes);
 
+	g_pip = ip;
+	g_tcp = tcp;
 	processA(&gTCP, length);
 
 	counterTCPFlag(&result->counter, tcp);
@@ -1215,6 +1217,7 @@ int processTCPPacket(const void * data, int size, int length, PIPHeader ip, PEth
 
 	if (session) {
 		counterTCPNode(session, &key, ether, size, length);
+		gCurSession = session;
 
 		int dir = dir_of_ipv4(&session->key.ipPair, &key.ipPair);
 
@@ -1238,6 +1241,7 @@ int processTCPPacket(const void * data, int size, int length, PIPHeader ip, PEth
 
 		updateTCPSessionRTT(session, tcp, -dir, seq, ack, &state);
 
+		memcpy(&gState, &state, sizeof(state));
 		return processStream(session, payload_data, payload_size, length, dir, seq, &state, tcp, ip, ether);
 	}
 	return 0;

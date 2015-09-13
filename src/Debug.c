@@ -38,6 +38,8 @@
 #include "MySQL.h"
 #include "Report.h"
 #include "Dump.h"
+#include "https.h"
+#include "sslol.h"
 
 #define __SIMLATE_DROP
 
@@ -408,6 +410,7 @@ void sig_handlor(int sig) {
 	sodero_report_disconnect();
 	stopDevice(gContext);
 	closeAll();
+	sslol_deinit();
 }
 
 void scale_time(PTimeStamp stamp) {
@@ -669,6 +672,7 @@ void debug(int argc, char * argv[]) {
 	signal(SIGALRM, alarm_handlor);
 
 	initArguments(argc, argv);
+	sslol_init();
 	sodero_report_check();
 	if (gDebug) {
 		prepare();

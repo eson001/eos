@@ -211,6 +211,13 @@ extern unsigned long long gTime;	//	Current time
 extern unsigned long long gTick;	//	Event report time
 extern unsigned long long gBase;
 
+extern PSoderoTCPSession gCurSession;
+extern TTCPState gState; 
+extern const char * gSslolConf;
+extern PEtherHeader g_ether;
+extern PTCPHeader g_tcp;
+extern PIPHeader g_pip;
+
 extern PSoderoPeriodResult getPeriodResult(void);
 extern PSoderoSessionManager getSessionManager(void);
 extern PSoderoPointerPool getFreshStreams(void);
