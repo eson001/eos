@@ -92,12 +92,12 @@ PROGRAMS = $(noinst_PROGRAMS)
 am___top_builddir__debug_SummarizeEngine_OBJECTS = DPI.$(OBJEXT) \
 	Carry.$(OBJEXT) Common.$(OBJEXT) Context.$(OBJEXT) \
 	Core.$(OBJEXT) DNS.$(OBJEXT) Debug.$(OBJEXT) Dump.$(OBJEXT) \
-	Ether.$(OBJEXT) HTTP.$(OBJEXT) ICMP.$(OBJEXT) IP.$(OBJEXT) \
-	Logic.$(OBJEXT) Parameter.$(OBJEXT) Report.$(OBJEXT) \
-	Session.$(OBJEXT) Stream.$(OBJEXT) Summarize.$(OBJEXT) \
-	TCP.$(OBJEXT) UDP.$(OBJEXT) XDR.$(OBJEXT) \
-	flow_stats_api.$(OBJEXT) interface.$(OBJEXT) MySQL.$(OBJEXT) \
-	Tns.$(OBJEXT)
+	Ether.$(OBJEXT) HTTP.$(OBJEXT) https.$(OBJEXT) ICMP.$(OBJEXT) \
+	IP.$(OBJEXT) Logic.$(OBJEXT) Parameter.$(OBJEXT) \
+	Report.$(OBJEXT) Session.$(OBJEXT) sslol.$(OBJEXT) \
+	Stream.$(OBJEXT) Summarize.$(OBJEXT) TCP.$(OBJEXT) \
+	UDP.$(OBJEXT) XDR.$(OBJEXT) flow_stats_api.$(OBJEXT) \
+	interface.$(OBJEXT) MySQL.$(OBJEXT) Tns.$(OBJEXT)
 __top_builddir__debug_SummarizeEngine_OBJECTS =  \
 	$(am___top_builddir__debug_SummarizeEngine_OBJECTS)
 __top_builddir__debug_SummarizeEngine_LDADD = $(LDADD)
@@ -258,12 +258,14 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     Dump.c \
     Ether.c \
     HTTP.c \
+    https.c \
     ICMP.c \
     IP.c \
     Logic.c \
     Parameter.c \
     Report.c \
     Session.c \
+    sslol.c \
     Stream.c \
     Summarize.c \
     TCP.c \
@@ -287,9 +289,9 @@ $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign src/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu src/Makefile'; \
 	$(am__cd) $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign src/Makefile
+	  $(AUTOMAKE) --gnu src/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -349,7 +351,9 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/UDP.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/XDR.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/flow_stats_api.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/https.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/interface.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sslol.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
