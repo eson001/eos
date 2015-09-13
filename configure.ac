@@ -14,6 +14,9 @@ AC_PROG_CC_STDC
 # Checks for libraries.
 AC_CHECK_LIB([pthread], [pthread_create])
 AC_CHECK_LIB([pcap], [pcap_create])
+AC_CHECK_LIB([ssl], [SSL_CTX_new])
+AC_CHECK_LIB([crypto], [X509_free])
+AC_CHECK_LIB([z], [inflate])
 AC_PROG_RANLIB
 
 # Checks for header files.

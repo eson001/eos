@@ -14,12 +14,14 @@ __top_builddir__debug_SummarizeEngine_SOURCES = \
     Dump.c \
     Ether.c \
     HTTP.c \
+    https.c \
     ICMP.c \
     IP.c \
     Logic.c \
     Parameter.c \
     Report.c \
     Session.c \
+    sslol.c \
     Stream.c \
     Summarize.c \
     TCP.c \
