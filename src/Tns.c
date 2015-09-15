@@ -1000,16 +1000,15 @@ int parseTnsApplication(PSoderoTnsPacketDetail detail, PSoderoTCPSession session
 
        struct cursor cursor; 
 	POracleHead head = (POracleHead)data;
-	data += sizeof(POracleHead);
-	size -= sizeof(POracleHead);
-	length -= sizeof(POracleHead);
+	data += sizeof(TOracleHead);
+	size -= sizeof(TOracleHead);
+	length -= sizeof(TOracleHead);
 	head->length = ntohs(head->length);
 	int total = head->length;
 	
 
        cursor.cap_len = size;
        cursor.head = data;
-	cursor_drop(&cursor, 4);
 
 	PSoderoTnsApplication application = session->session;
 
