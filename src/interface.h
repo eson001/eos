@@ -186,6 +186,14 @@ struct TSoderoHTTPSessionBody {
 	u_int req_time;
 	u_int rsp_time;
 	u_int wait_time;
+	#if 0
+	u_int req_time_min;
+	u_int rsp_time_min;
+	u_int wait_time_min;
+	u_int req_time_max;
+	u_int rsp_time_max;
+	u_int wait_time_max;
+	#endif
 	u_int64_t req_bytes;
 	u_int64_t req_pkts;
 	u_int64_t req_l2_bytes;

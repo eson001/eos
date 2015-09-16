@@ -25,7 +25,7 @@ DPI_SessionType _HttpsEnv_ForReassemble( struct HttpsEnv_* env, struct HTTPS_Pkt
 {
 	if( HttpsEnvIsSSLPacket( env, pkt ) ) return eSessTypeSSL;
 
-	return eSessTypeTBD;
+	return eSessTypeNull;
 }
 
 HttpsEnv* HttpsEnvCreate( pcap_t* adapter, int sessionTableSize, uint32_t key_timeout_interval, uint32_t tcp_timeout_interval)

@@ -181,7 +181,7 @@ void processHTTPNode(int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether, 
 				sourNode->l4.http.outgoing.count++;	//	method in outgoing
 		}
 		if (destNode) {
-			sourNode->l4.http.incoming.action++;
+			destNode->l4.http.incoming.action++;
 			if(value)
 				destNode->l4.http.outgoing.count++;	//	method in outgoing
 		}
@@ -348,14 +348,20 @@ void updateHTTPRequestState(PSoderoApplicationHTTP application, PTCPState state)
 }
 
 int checkHTTPRequestTitle(PSoderoTCPSession session, PSoderoTCPValue value,
-		int base, const unsigned char * data, int size,
+		int base, const unsigned char * data, int size, int length,
 		int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether) {
 	THTTPDetectRequest head;
 	int result = detectHTTPRequest(&head, value, base, data, size);
 
 	if (result > 0) {
-		getHTTPSession(session, &head);
+		PSoderoApplicationHTTP application = getHTTPSession(session, &head);
 		processHTTPNode(dir, tcp, ip, ether, head.method);
+
+		if (application){
+			application->req_pkts     ++;
+			application->req_bytes    += size;
+			application->req_l2_bytes += length;
+		}
 	}
 
 	return result;
@@ -846,7 +852,7 @@ int checkHTTPResponseBody(PSoderoApplicationHTTP application, PSoderoTCPValue va
 }
 
 int processHTTPRequest(PSoderoTCPSession session, PSoderoTCPValue value,
-		unsigned int base, const unsigned char * data, unsigned int size,
+		unsigned int base, const unsigned char * data, unsigned int size, int length,
 		int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether) {
 	PSoderoApplicationHTTP application = session->session;
 	while(application) {
@@ -862,7 +868,7 @@ int processHTTPRequest(PSoderoTCPSession session, PSoderoTCPValue value,
 				continue;
 		}
 	}
-	return checkHTTPRequestTitle(session, value, base, data, size, dir, tcp, ip, ether);
+	return checkHTTPRequestTitle(session, value, base, data, size, length, dir, tcp, ip, ether);
 }
 
 int processHTTPResponse(PSoderoTCPSession session, PSoderoTCPValue value,
@@ -919,10 +925,10 @@ void updateHTTPState(PSoderoTCPSession session, int dir, PTCPState state) {
 }
 
 int detectHTTP(PSoderoTCPSession session, PSoderoTCPValue value,
-	unsigned int base, const unsigned char * data, unsigned int size, int dir,
+	unsigned int base, const unsigned char * data, unsigned int size, int length, int dir,
 	PTCPHeader tcp, PIPHeader ip, PEtherHeader ether) {
 
-	return checkHTTPRequestTitle(session, value, base, data, size, dir, tcp, ip, ether);
+	return checkHTTPRequestTitle(session, value, base, data, size, length, dir, tcp, ip, ether);
 }
 
 int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
@@ -963,7 +969,7 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 //				destNode->l4.http.incoming.rttCount += state->rtt;
 //			}
 			while(total < gate){
-				int result = processHTTPRequest (session, value, total, data, size, dir, tcp, ip, ether);
+				int result = processHTTPRequest (session, value, total, data, size, length, dir, tcp, ip, ether);
 				if (result < 0)
 					return PARSE_ERROR;
 				if (result > 0) {

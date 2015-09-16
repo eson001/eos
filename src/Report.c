@@ -1202,12 +1202,35 @@ int sodero_report_http_body(PSoderoApplicationHTTP value, int flag) {
 		SODERO_SAFE_TEXT(record, content_type, value->rsp_content_type);
 
 //		record-> dns_time;
+#if 0
 		if (value->req_e && value->req_b)
 			record->req_time  = (value->req_e - value->req_b) / uSecsPerMSec;
 		if (value->rsp_e && value->rsp_b)
 			record->rsp_time  = (value->rsp_e - value->rsp_b) / uSecsPerMSec;
 		if (value->rsp_b && value->req_e)
 			record->wait_time  = (value->rsp_b - value->req_e) / uSecsPerMSec;
+#endif
+
+		
+		if (value->request.sum)
+			record->req_time = value->request.sum / value->request.count;
+		
+		if (value->response.sum)
+			record->rsp_time = value->response.sum / value->response.count;
+		
+		if (value->wait.sum)
+			record->wait_time = value->wait.sum / value->wait.count;
+
+#if 0
+		record->req_time_min = value->request.min;
+		record->rsp_time_min = value->response.min;
+		record->wait_time_min = value->wait.min;
+
+		record->req_time_max = value->request.max;
+		record->rsp_time_max = value->response.max;
+		record->wait_time_max = value->wait.max;
+#endif
+		
 
 		record->req_bytes    = value->req_bytes   ;
 		record->req_pkts     = value->req_pkts    ;

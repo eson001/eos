@@ -200,7 +200,7 @@ extern const char * nameOfHTTPMethod (unsigned char method);
 extern PSoderoApplicationHTTP getHTTPSession(PSoderoTCPSession session, PHTTPDetectRequest detect);
 
 extern int checkHTTPRequestTitle(PSoderoTCPSession session, PSoderoTCPValue value,
-	int base, const unsigned char * data, int size,
+	int base, const unsigned char * data, int size, int length,
 	int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether);
 extern int checkHTTPResponseTitle(PSoderoTCPSession session, PSoderoTCPValue value,
 	int base, const unsigned char * data, int size,
@@ -212,7 +212,7 @@ extern int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue
 	PTCPState state, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether);
 
 extern int detectHTTP(PSoderoTCPSession session, PSoderoTCPValue value,
-	unsigned int base, const unsigned char * data, unsigned int size, int dir,
+	unsigned int base, const unsigned char * data, unsigned int size, int length, int dir,
 	PTCPHeader tcp, PIPHeader ip, PEtherHeader ether);
 
 extern int skipHTTPPacket(PSoderoTCPSession session, int dir, unsigned int size);

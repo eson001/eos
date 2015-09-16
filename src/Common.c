@@ -945,10 +945,7 @@ void processEE(PSoderoUnitDatum datum1, PSoderoUnitDatum datum2)
 		datum1->count = datum2->count;
 	}
 
-	datum2->count = 0;
-	datum2->min = 0;
-	datum2->max = 0;
-	datum2->sum = 0;
+
 }
 
 void processP(PSoderoPacketDatum datum, int value) {

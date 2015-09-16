@@ -772,7 +772,7 @@ APPEND_OVER:
 }
 
 int detectTCP(PSoderoTCPSession session, PSoderoTCPValue value,
-		const unsigned char * data, unsigned int size,
+		const unsigned char * data, unsigned int size,int length,
 		int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether) {
 	//	Detect Application must use valu's buffer
 	if ((session->value.set.l&(1 << SESSION_SET_L_ORACLE)) | session->value.set.h)
@@ -803,7 +803,7 @@ int detectTCP(PSoderoTCPSession session, PSoderoTCPValue value,
 	//	Always check http
 	int total = value->offset + size;
 	while(value->http < total) {
-		int byte = detectHTTP(session, value, value->http, data, size, dir, tcp, ip, ether);
+		int byte = detectHTTP(session, value, value->http, data, size, length, dir, tcp, ip, ether);
 		if (byte > 0) {
 			session->flag = SESSION_TYPE_MINOR_HTTP;
 			((PSoderoID)&((PSoderoApplicationHTTP)session->session)->id)->type = session->flag;
@@ -835,7 +835,7 @@ void processTCPData(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 #else
 	int base = 0;
 	if (session->flag == SESSION_TYPE_MINOR_TCP) {
-		base = detectTCP(session, value, data, size, dir, tcp, ip, ether);
+		base = detectTCP(session, value, data, size, length, dir, tcp, ip, ether);
 		if (session->flag == SESSION_TYPE_MINOR_TCP)
 		do {
 			//	Not detected

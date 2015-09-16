@@ -1194,7 +1194,6 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		if (destNode) {
 			sourNode->l4.tns.incoming.rsps += detail.rsps; 
 		}
-		return;
 	}
 	
 	if (dir < 0) {	//	response
@@ -1204,7 +1203,6 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		if (destNode) {
 			sourNode->l4.tns.incoming.rsps += detail.rsps; 
 		}
-		return;
 	}
 	
 	if (result > 0) {
