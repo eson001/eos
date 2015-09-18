@@ -873,6 +873,7 @@ void processTCPData(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		       case  SESSION_TYPE_MINOR_ORACLE:
 				result = processTNSPacket(session, dir * session->key.dir, value, base, data, size,
 					length, state, tcp, ip, ether);
+				value->offset = 0;
 				break;
 			case SESSION_TYPE_MINOR_CUSTOM:
 				break;

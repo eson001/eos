@@ -814,17 +814,18 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		   if ((ttc_code == 0x10) && (ttc_subcode == 0x17)) {
 		   		//response for 1169;
 		   }*/
-/*
+
 		   if ((ttc_code == 0x06) || (ttc_code == 0x08)) {
 		   		//query end now
 		   		if (application && ((application->step == TNS_STEP_REQ_START) || (application->step == TNS_STEP_REQ_MORE))) {
+					printf("++++++++++++++++++++++++++++++++getClosedApplications\r\n");
 	                sodero_pointer_add(getClosedApplications(), application);
 	                session->session = nullptr;
 	                session->value.tns.serial = 0;
 	                application = nullptr;
 				}
 		   		
-		   }*/
+		   }
        } 
        else 
        {
@@ -963,7 +964,7 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 				application->rspPending += total - size;
 		} else {
 			//	ToDo: Error Protocol
-			LogErr("%s", "Empty applicaton on response\n");
+			//LogErr("%s", "Empty applicaton on response\n");
 			//return PARSE_ERROR;
 			return 0;
 		}
@@ -982,7 +983,7 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 				application->reqPending += total - size;
 		} else {
 			//	ToDo: Error Protocol
-			LogErr("%s", "Empty applicaton on request\n");
+			//LogErr("%s", "Empty applicaton on request\n");
 			//return PARSE_ERROR;
 			return 0;
 		}
@@ -990,7 +991,7 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 		return (size <= total ? size : total) + sizeof(*head);
 
 	}
-	LogErr("%s","command dir error");
+	//LogErr("%s","command dir error");
 	//return PARSE_ERROR;
 	return 0;
 }
