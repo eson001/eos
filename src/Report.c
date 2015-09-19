@@ -1044,7 +1044,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					//record->status = value->status;
 		
 					//if (isExportReport()) {
-						printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						printf("Report - oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 								"\ttime %llu to %llu status %u user %s database %s\n",
 							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
 							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
@@ -1073,7 +1073,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->rsp_datasets = value->set; /* not support now */
 		
 					//if (isExportReport()) {
-						printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						printf("Report - oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 								"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
 							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
 							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
@@ -1102,7 +1102,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->rsp_datasets = value->set;
 		
 					//if (isExportReport()) {
-						printf("Report - MySQL: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
+						printf("Report - oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 								"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
 							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
 							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
