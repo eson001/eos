@@ -796,8 +796,8 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
                 application->rspFirst = gTime;
             if (application->rspLast < gTime)
                 application->rspLast = gTime;
-            if (total > size)
-                application->rspPending += total - size;
+            //if (total > size)
+                //application->rspPending += total - size;
             if ((ttc_code == 0x04) && (ttc_subcode == 0x01 || ttc_subcode == 0x02 || ttc_subcode == 0x05)
 				|| (ttc_code == 0x06) || (ttc_code == 0x08))
             {
@@ -960,8 +960,8 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 				application->rspFirst = gTime;
 			if (application->rspLast < gTime)
 				application->rspLast = gTime;
-			if (total > size)
-				application->rspPending += total - size;
+			//if (total > size)
+				//application->rspPending += total - size;
 		} else {
 			//	ToDo: Error Protocol
 			//LogErr("%s", "Empty applicaton on response\n");
@@ -979,8 +979,8 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
 				application->reqFirst = gTime;
 			if (application->reqLast< gTime)
 				application->reqLast = gTime;
-			if (total > size)
-				application->reqPending += total - size;
+			//if (total > size)
+			//	application->reqPending += total - size;
 		} else {
 			//	ToDo: Error Protocol
 			//LogErr("%s", "Empty applicaton on request\n");
@@ -1150,6 +1150,7 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	TSoderoTnsPacketDetail detail = {0};
 
 	int result = 0;
+	value->offset = 0;
 	//	Now, there must be a Oracle packet is parsed.
 	if (base < value->offset) {
 		//	Merge legacy data and current packet
