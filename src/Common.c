@@ -941,7 +941,7 @@ void processEE(PSoderoUnitDatum datum1, PSoderoUnitDatum datum2)
 	} else {
 		datum1->sum = datum2->sum;
 		datum1->min = datum2->min;
-		datum2->max = datum2->max;
+		datum1->max = datum2->max;
 		datum1->count = datum2->count;
 	}
 
