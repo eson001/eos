@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/resource.h>
+#include <openssl/md5.h>
 
 #include "Type.h"
 #include "Parameter.h"
@@ -69,6 +70,19 @@ unsigned int gSeconds;
 unsigned long long gTime;	//	Current time
 unsigned long long gTick;	//	Event report time
 unsigned long long gBase;	//	Periodic report time
+ /*
+  * Duplicate frame detection
+  */
+ typedef struct _fd_hash_t {
+	 unsigned char digest[16];
+	 unsigned int  len;
+ } fd_hash_t;
+ 
+#define DUP_DEPTH  10
+static fd_hash_t fd_hash[DUP_DEPTH];
+static int 	  cur_dup_entry = 0;
+static int 	  ignored_bytes = 0; 
+int	   duplicate_count = 0; 
 
  PSoderoPeriodResult getPeriodResult(void) {
 	return gPeriodResult;
@@ -376,6 +390,38 @@ PSoderoPeriodResult timerHandler(long long time) {
 	return result;
 }
 
+int duplicate_test(unsigned char * fd, unsigned int len) {
+    int i;
+    MD5_CTX ctx;
+
+    unsigned int new_len;
+    unsigned char *new_fd;
+
+    new_fd  = &fd[ignored_bytes];
+    new_len = len - (ignored_bytes);
+
+    cur_dup_entry++;
+    if (cur_dup_entry >= DUP_DEPTH)
+        cur_dup_entry = 0;
+
+    MD5_Init(&ctx);
+    MD5_Update(&ctx, new_fd, new_len);
+    MD5_Final(fd_hash[cur_dup_entry].digest, &ctx);
+
+    fd_hash[cur_dup_entry].len = len;
+
+    for (i = 0; i < DUP_DEPTH; i++) {
+        if (i == cur_dup_entry)
+            continue;
+
+        if (fd_hash[i].len == fd_hash[cur_dup_entry].len
+            && memcmp(fd_hash[i].digest, fd_hash[cur_dup_entry].digest, 16) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
 
 int packetHandler(const PEtherPacket packet, int size, int length) {
 	sodero_report_result(timerHandler(now()), getSessionManager());
@@ -399,6 +445,10 @@ int pcapHandler(const PEtherPacket packet, PPCAPPacketHeader header) {
 	pth_header.len = header->length;
 
 	if (packet) {
+		if (duplicate_test(packet, header->length)){
+			duplicate_count++;
+			return 0;
+		}
 		processEtherPacket(packet, header->size, header->length);
 		sslol_process(&pth_header, (const u_char *)packet);
 #ifndef __SKIP_SPEED__
