@@ -504,72 +504,74 @@ bool_t xdr_TSoderoTCPSessionContent(XDR *xdrs, TSoderoTCPSessionContent *objp) {
 	if (!xdr_TSoderoSessionType(xdrs, &objp->type))
 		return FALSE;
 	switch (objp->type) {
-	case SESSION_TYPE_FLOW_HEAD:
-		if (!xdr_TSoderoFLOWSessionHead(xdrs,
-				&objp->TSoderoTCPSessionContent_u.flow_head))
-			return FALSE;
-		break;
-	case SESSION_TYPE_FLOW_BODY:
-		if (!xdr_TSoderoFLOWSessionBody(xdrs,
-				&objp->TSoderoTCPSessionContent_u.flow_body))
-			return FALSE;
-		break;
-	case SESSION_TYPE_HTTP_HEAD:
-		if (!xdr_TSoderoHTTPSessionHead(xdrs,
-				&objp->TSoderoTCPSessionContent_u.http_head))
-			return FALSE;
-		break;
-	case SESSION_TYPE_HTTP_BODY:
-		if (!xdr_TSoderoHTTPSessionBody(xdrs,
-				&objp->TSoderoTCPSessionContent_u.http_body))
-			return FALSE;
-		break;
-	case SESSION_TYPE_DNS:
-		if (!xdr_TSoderoDNSMsg(xdrs, &objp->TSoderoTCPSessionContent_u.dns))
-			return FALSE;
-		break;
-	case SESSION_TYPE_ARP:
-		if (!xdr_TSoderoARPMsg(xdrs, &objp->TSoderoTCPSessionContent_u.arp))
-			return FALSE;
-		break;
-	case SESSION_TYPE_ICMP:
-		if (!xdr_TSoderoICMPType(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.type))
-			return FALSE;
-		switch(objp->TSoderoTCPSessionContent_u.icmp.type) {
-			case ICMP_TYPE_EVENT:
-				if (!xdr_TSoderoICMPThing(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.thing))
-					return FALSE;
-				break;
-			case ICMP_TYPE_SESSION:
-				if (!xdr_TSoderoICMPMsg(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.msg))
-					return FALSE;
-				break;
+        case SESSION_TYPE_FLOW_HEAD:
+            if (!xdr_TSoderoFLOWSessionHead(xdrs,
+                    &objp->TSoderoTCPSessionContent_u.flow_head))
+                return FALSE;
+            break;
+        case SESSION_TYPE_FLOW_BODY:
+            if (!xdr_TSoderoFLOWSessionBody(xdrs,
+                    &objp->TSoderoTCPSessionContent_u.flow_body))
+                return FALSE;
+            break;
+        case SESSION_TYPE_HTTP_HEAD:
+            if (!xdr_TSoderoHTTPSessionHead(xdrs,
+                    &objp->TSoderoTCPSessionContent_u.http_head))
+                return FALSE;
+            break;
+        case SESSION_TYPE_HTTP_BODY:
+            if (!xdr_TSoderoHTTPSessionBody(xdrs,
+                    &objp->TSoderoTCPSessionContent_u.http_body))
+                return FALSE;
+            break;
+        case SESSION_TYPE_DNS:
+            if (!xdr_TSoderoDNSMsg(xdrs, &objp->TSoderoTCPSessionContent_u.dns))
+                return FALSE;
+            break;
+        case SESSION_TYPE_ARP:
+            if (!xdr_TSoderoARPMsg(xdrs, &objp->TSoderoTCPSessionContent_u.arp))
+                return FALSE;
+            break;
+        case SESSION_TYPE_ICMP:
+            if (!xdr_TSoderoICMPType(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.type))
+                return FALSE;
+            switch(objp->TSoderoTCPSessionContent_u.icmp.type) {
+                case ICMP_TYPE_EVENT:
+                    if (!xdr_TSoderoICMPThing(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.thing))
+                        return FALSE;
+                    break;
+                case ICMP_TYPE_SESSION:
+                    if (!xdr_TSoderoICMPMsg(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.msg))
+                        return FALSE;
+                    break;
+            default:
+                return FALSE;
+            }
+            break;
+        case SESSION_TYPE_MYSQL:
+            if (!xdr_TSoderoMySQLType(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.type))
+                return FALSE;
+            switch(objp->TSoderoTCPSessionContent_u.mysql.type) {
+            case MYSQL_TYPE_LOGIN:
+                if (!xdr_TSoderoMySQLLoginMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.login))
+                    return FALSE;
+                break;
+            case MYSQL_TYPE_COMMAND:
+                if (!xdr_TSoderoMySQLCommandMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.command))
+                    return FALSE;
+                break;
+            }
+            break;
+        case SESSION_TYPE_ORACLE:
+            if (!xdr_TSoderoOracleMethod(xdrs, &objp->TSoderoTCPSessionContent_u.tns.type))
+                return FALSE;
+            if (!xdr_TSoderoOracleMsg(xdrs, &objp->TSoderoTCPSessionContent_u.tns.oracle_msg))
+                return FALSE;
+            break;
+                    
         default:
-            return FALSE;
+                break;
     }
-    break;
-case SESSION_TYPE_MYSQL:
-    if (!xdr_TSoderoMySQLType(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.type))
-        return FALSE;
-    switch(objp->TSoderoTCPSessionContent_u.mysql.type) {
-    case MYSQL_TYPE_LOGIN:
-        if (!xdr_TSoderoMySQLLoginMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.login))
-            return FALSE;
-        break;
-    case MYSQL_TYPE_COMMAND:
-        if (!xdr_TSoderoMySQLCommandMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.command))
-            return FALSE;
-        break;
-    }
-    break;
-case SESSION_TYPE_ORACLE:
-    if (!xdr_TSoderoOracleMsg(xdrs, &objp->TSoderoTCPSessionContent_u.tns))
-        return FALSE;
-    break;
-            
-	default:
-		break;
-	}
 	return TRUE;
 }
 
@@ -714,8 +716,6 @@ bool_t xdr_TSoderoOracleMethod(XDR *xdrs, TSoderoOracleMethod *objp) {
 }
 
 bool_t xdr_TSoderoOracleMsg(XDR *xdrs, TSoderoOracleMsg *objp) {
-    TSoderoOracleMethod method;	//	µ«¬ΩªÚ’ﬂSQLªÓ◊≈Proc¥Ê¥¢π˝≥Ã
-    
     if (!xdr_u_int64_t(xdrs, &objp->session_id))
         return FALSE;
     if (!xdr_u_int64_t(xdrs, &objp->flow_id))
