@@ -544,24 +544,29 @@ bool_t xdr_TSoderoTCPSessionContent(XDR *xdrs, TSoderoTCPSessionContent *objp) {
 				if (!xdr_TSoderoICMPMsg(xdrs, &objp->TSoderoTCPSessionContent_u.icmp.msg))
 					return FALSE;
 				break;
-			default:
-				return FALSE;
-		}
-		break;
-	case SESSION_TYPE_MYSQL:
-		if (!xdr_TSoderoMySQLType(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.type))
-			return FALSE;
-		switch(objp->TSoderoTCPSessionContent_u.mysql.type) {
-		case MYSQL_TYPE_LOGIN:
-			if (!xdr_TSoderoMySQLLoginMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.login))
-				return FALSE;
-			break;
-		case MYSQL_TYPE_COMMAND:
-			if (!xdr_TSoderoMySQLCommandMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.command))
-				return FALSE;
-			break;
-		}
-		break;
+        default:
+            return FALSE;
+    }
+    break;
+case SESSION_TYPE_MYSQL:
+    if (!xdr_TSoderoMySQLType(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.type))
+        return FALSE;
+    switch(objp->TSoderoTCPSessionContent_u.mysql.type) {
+    case MYSQL_TYPE_LOGIN:
+        if (!xdr_TSoderoMySQLLoginMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.login))
+            return FALSE;
+        break;
+    case MYSQL_TYPE_COMMAND:
+        if (!xdr_TSoderoMySQLCommandMsg(xdrs, &objp->TSoderoTCPSessionContent_u.mysql.command))
+            return FALSE;
+        break;
+    }
+    break;
+case SESSION_TYPE_ORACLE:
+    if (!xdr_TSoderoOracleMsg(xdrs, &objp->TSoderoTCPSessionContent_u.tns))
+        return FALSE;
+    break;
+            
 	default:
 		break;
 	}
@@ -700,4 +705,74 @@ bool_t xdr_TSoderoUDPReportMsg(XDR *xdrs, TSoderoUDPReportMsg *objp) {
 		break;
 	}
 	return TRUE;
+}
+
+bool_t xdr_TSoderoOracleMethod(XDR *xdrs, TSoderoOracleMethod *objp) {
+    if (!xdr_enum(xdrs, (enum_t *) objp))
+        return FALSE;
+    return TRUE;
+}
+
+bool_t xdr_TSoderoOracleMsg(XDR *xdrs, TSoderoOracleMsg *objp) {
+    TSoderoOracleMethod method;	//	µ«¬ΩªÚ’ﬂSQLªÓ◊≈Proc¥Ê¥¢π˝≥Ã
+    
+    if (!xdr_u_int64_t(xdrs, &objp->session_id))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->flow_id))
+        return FALSE;
+    if (!xdr_TSoderoOracleMethod(xdrs, &objp->method))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->user.user_val,
+                   (u_int *) &objp->user.user_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->database.database_val,
+                   (u_int *) &objp->database.database_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->statement.statement_val,
+                   (u_int *) &objp->statement.statement_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->error_code.error_code_val,
+                   (u_int *) &objp->error_code.error_code_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->error_msg.error_msg_val,
+                   (u_int *) &objp->error_msg.error_msg_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    
+    if (!xdr_u_int32_t(xdrs, &objp->req_time))
+        return FALSE;
+    if (!xdr_u_int32_t(xdrs, &objp->rsp_time))
+        return FALSE;
+    if (!xdr_u_int32_t(xdrs, &objp->wait_time))
+        return FALSE;
+    
+    if (!xdr_u_int64_t(xdrs, &objp->req_bytes))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->req_pkts))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->reqLast))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->req_l2_bytes))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->rsp_bytes))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->rsp_pkts))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->rsp_l2_bytes))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->rsp_records))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->rsp_fields))
+        return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->rsp_datasets))
+        return FALSE;
+    if (!xdr_u_char(xdrs, &objp->client_abort))
+        return FALSE;
+    if (!xdr_u_char(xdrs, &objp->server_abort))
+        return FALSE;
+    return TRUE;
 }

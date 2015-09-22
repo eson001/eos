@@ -593,6 +593,8 @@ extern bool_t xdr_TSoderoCountMetricMsg(XDR *, TSoderoCountMetricMsg*);
 extern bool_t xdr_TSoderoPeriodicMetricMsg(XDR *, TSoderoPeriodicMetricMsg*);
 extern bool_t xdr_UDPReportType(XDR *, UDPReportType*);
 extern bool_t xdr_TSoderoUDPReportMsg(XDR *, TSoderoUDPReportMsg*);
+extern bool_t xdr_TSoderoOracleMethod(XDR *, TSoderoOracleMethod*);
+extern bool_t xdr_TSoderoOracleMsg(XDR *, TSoderoOracleMsg*);
 
 #ifdef __cplusplus
 }
