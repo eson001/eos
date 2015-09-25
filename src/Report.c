@@ -1249,7 +1249,7 @@ int sodero_report_http_body(PSoderoApplicationHTTP value, int flag) {
 		record->rsp_aborted    = value->rsp_aborted   ;
 		record->rsp_chunked    = value->rsp_chunked   ;
 		record->rsp_compressed = value->rsp_compressed;
-
+		memset(record->rsp_version, 0, sizeof(record->rsp_version));
 		snprintf((char*)record->rsp_version, sizeof(record->rsp_version) - 1, "HTTP/1.%d", value->rsp_version);
 
 		if (flag & SODERO_REPORT_DONE)

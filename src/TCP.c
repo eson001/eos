@@ -970,6 +970,9 @@ int processStream(PSoderoTCPSession session, const void * data, int size, int le
 
 	PSoderoTCPValue value = streamValue(session, dir);
 
+	if (value->ack > value->seq) // if drop some packet, this session will be always wrong.
+		value->seq = value->ack;
+
 	if (!value) return 0;
 
 	if (tcp->urg) {

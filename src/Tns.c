@@ -1150,7 +1150,6 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	TSoderoTnsPacketDetail detail = {0};
 
 	int result = 0;
-	value->offset = 0;
 	//	Now, there must be a Oracle packet is parsed.
 	if (base < value->offset) {
 		//	Merge legacy data and current packet
@@ -1217,6 +1216,7 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		}
 	}
 	
-	return result < 0 ? result : done + result;
+	//return result < 0 ? result : done + result;
+	return size - base;
 }
 
