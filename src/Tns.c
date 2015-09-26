@@ -818,7 +818,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		   if ((ttc_code == 0x06) || (ttc_code == 0x08)) {
 		   		//query end now
 		   		if (application && ((application->step == TNS_STEP_REQ_START) || (application->step == TNS_STEP_REQ_MORE))) {
-					printf("++++++++++++++++++++++++++++++++getClosedApplications\r\n");
+					//printf("++++++++++++++++++++++++++++++++getClosedApplications\r\n");
 	                sodero_pointer_add(getClosedApplications(), application);
 	                session->session = nullptr;
 	                session->value.tns.serial = 0;
@@ -830,7 +830,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
        else 
        {
            //	ToDo: Error Protocol
-           LogErr("%s", "Empty applicaton on response\n");
+           //LogErr("%s", "Empty applicaton on response\n");
 		   return (size <= total ? size : total) + sizeof(*head);
            //return PARSE_ERROR;
        }
@@ -869,7 +869,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
         }
 
 		if ((ttc_code == 0x11) && ((ttc_subcode == 0x69) || (ttc_subcode == 0x78))) {
-			printf("parseTnsData:1169\r\n");
+			//printf("parseTnsData:1169\r\n");
 			detail->reqs = 1;
 			application = takeApplication(sizeof(TSoderoTnsApplication));
 			newApplication((PSoderoApplication)application, (PSoderoSession)session);
@@ -891,7 +891,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 
 		}
 
-		printf("parseTnsData: application = %p\r\n", application);
+		//printf("parseTnsData: application = %p\r\n", application);
 		if (application) 
 		{
 			if (application->step != TNS_STEP_REQ_MORE)
@@ -901,7 +901,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		else 
 		{
 			 //	ToDo: Error Protocol
-			LogErr("%s", "Empty applicaton on request\n");
+			//LogErr("%s", "Empty applicaton on request\n");
 			return (size <= total ? size : total) + sizeof(*head);
            //return PARSE_ERROR;
 		}
@@ -1148,7 +1148,7 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	if (total < sizeof(TOracleHead)) return done;
 
 	TSoderoTnsPacketDetail detail = {0};
-
+	//value->offset = 0;
 	int result = 0;
 	//	Now, there must be a Oracle packet is parsed.
 	if (base < value->offset) {
@@ -1216,7 +1216,7 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		}
 	}
 	
-	//return result < 0 ? result : done + result;
-	return size - base;
+	return result < 0 ? result : done + result;
+	//return size - base;
 }
 

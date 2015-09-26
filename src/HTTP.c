@@ -675,10 +675,8 @@ int checkHTTPHead(PSoderoApplicationHTTP application, int dir, PSoderoTCPValue v
 			if (cookie && (0 == cookie_len)) {
 				memset(cookie, 0, 128);
 				cookie_len += snprintf(cookie + cookie_len, 128 - cookie_len, "%s", application->req_cookies);
-				printf("checkHTTPHead1: %s, %s\r\n", application->req_cookies, cookie);
 			} else if (cookie) {
 				cookie_len += snprintf(cookie + cookie_len, 128 - cookie_len, ",%s", application->req_cookies);
-				printf("checkHTTPHead2: %s, %s\r\n", application->req_cookies, cookie);
 			}
 
 			application->req_cookies = NULL;
@@ -693,7 +691,6 @@ int checkHTTPHead(PSoderoApplicationHTTP application, int dir, PSoderoTCPValue v
 	if (cookie) {
 		//cookie_len += snprintf(cookie + cookie_len, 128 - cookie_len, ";", application->req_cookies);
 		application->req_cookies = cookie;
-		printf("checkHTTPHead2: %s, %s\r\n", application->req_cookies, cookie);
 	}
 
 	return value->offset + offset - base;
@@ -1046,7 +1043,7 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 		if (isDoneHTTPSession(application)) {
 			PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
 			application->rsp_e = gTime;
-			printf("updateHTTPState:: rsp_e %llx, %llx, %llx\r\n", gTime, application->req_e,application->req_b);
+			//printf("updateHTTPState:: rsp_e %llx, %llx, %llx\r\n", gTime, application->req_e,application->req_b);
 			if (application->rsp_b)
 				processE(&application->response, gTime - application->rsp_b);
 
