@@ -458,6 +458,14 @@ int checkHTTPRequestField(PSoderoApplicationHTTP session, const unsigned char * 
 		return pickHTTPField(data, size, HTTP_OFFSET_HOST, &session->host);
 	}
 
+	if ((major & 0x0000FFFFFFFFFFFFULL) == 0x00004e494749524FULL) {		//	ORIGIN
+		return pickHTTPField(data, size, HTTP_OFFSET_ORIGIN, &session->origin);
+	}
+
+	if ((major & 0x0000FFFFFFFFFFFFULL) == 0x000045494b4f4f43ULL) {		//	COOKIE
+		return pickHTTPField(data, size, HTTP_OFFSET_COOKIE, &session->req_cookies);
+	}
+
 	if ((major & 0x00FFFFFFFFFFFFFFULL) == 0x0052455245464552ULL) {		//	REFERER
 		return pickHTTPField(data, size, HTTP_OFFSET_REF, &session->referer);
 	}
@@ -636,6 +644,9 @@ int checkHTTPHead(PSoderoApplicationHTTP application, int dir, PSoderoTCPValue v
 		int base, const unsigned char * data, int size, TcheckHTTPField checker, TanalyzeHTTPField alalyze) {
 
 	int offset = base;
+	char *cookie = NULL;
+	int cookie_len = 0;
+	
 	while(offset < value->offset) {
 		unsigned char buffer[64 * 1024];
 		int bytes = pickLine(buffer, sizeof(buffer), value, base, data, size);
@@ -657,10 +668,32 @@ int checkHTTPHead(PSoderoApplicationHTTP application, int dir, PSoderoTCPValue v
 		}
 
 		int bytes = checker(application, data + offset, size - offset);
+		if (application->req_cookies) {
+			if (!cookie)
+				cookie = malloc(128);
+			
+			if (cookie && (0 == cookie_len)) {
+				memset(cookie, 0, 128);
+				cookie_len += snprintf(cookie + cookie_len, 128 - cookie_len, "%s", application->req_cookies);
+				printf("checkHTTPHead1: %s, %s\r\n", application->req_cookies, cookie);
+			} else if (cookie) {
+				cookie_len += snprintf(cookie + cookie_len, 128 - cookie_len, ",%s", application->req_cookies);
+				printf("checkHTTPHead2: %s, %s\r\n", application->req_cookies, cookie);
+			}
+
+			application->req_cookies = NULL;
+		}
+			
 		if (bytes > 0)
 			offset += bytes;
 		else
 			break;
+	}
+
+	if (cookie) {
+		//cookie_len += snprintf(cookie + cookie_len, 128 - cookie_len, ";", application->req_cookies);
+		application->req_cookies = cookie;
+		printf("checkHTTPHead2: %s, %s\r\n", application->req_cookies, cookie);
 	}
 
 	return value->offset + offset - base;

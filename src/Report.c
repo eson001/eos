@@ -1148,8 +1148,8 @@ int sodero_report_http_head(PSoderoApplicationHTTP value, int flag) {
 		SODERO_SAFE_TEXT(record, host, value->host);
 		SODERO_SAFE_TEXT(record, user_agent, value->ua);
 		SODERO_SAFE_TEXT(record, referer, value->referer);
-//		SODERO_SAFE_TEXT(record, origin, value->origin);
-//		SODERO_SAFE_TEXT(record, cookies, value->req_cookies);
+		SODERO_SAFE_TEXT(record, origin, value->origin);
+		SODERO_SAFE_TEXT(record, cookies, value->req_cookies);
 //		SODERO_SAFE_TEXT(record, req_sample, value->req_sample);
 
 		if (isExportApplication(owner->key.proto, owner->flag)) {

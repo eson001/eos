@@ -37,6 +37,8 @@
 #define HTTP_FIELD_MIN_LENGTH            8
 #define HTTP_OFFSET_LOCATION             8
 #define HTTP_OFFSET_HOST                 4
+#define HTTP_OFFSET_ORIGIN               6
+#define HTTP_OFFSET_COOKIE               6
 #define HTTP_OFFSET_REF                  7
 #define HTTP_OFFSET_UA                  10
 #define HTTP_OFFSET_X_HOST              13
@@ -147,8 +149,8 @@ struct SODERO_APPLICATION_HTTP {
 	char * rsp_content_type;
 	char * req_content_length;
 	char * rsp_content_length;
-//	char * req_cookies;
-//	char * rsp_cookies;
+	char * req_cookies;
+	char * rsp_cookies;
 	char * transfer_encoding;
 	char * content_encoding;
 
@@ -164,7 +166,7 @@ struct SODERO_APPLICATION_HTTP {
 	char * date;	//	Date
 	char * expires;	//	Expires
 //	char * title;
-//	char * origin;	//	X-Forwarded-For or true-client-ip
+	char * origin;	//	X-Forwarded-For or true-client-ip
 //
 //	char * req_sample;	//	N first bytes of HTTP request payload
 //	char * rsp_sample;	//	N first bytes of HTTP response payload
