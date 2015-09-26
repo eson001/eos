@@ -533,7 +533,7 @@ int checkHTTPResposneField(PSoderoApplicationHTTP session, const unsigned char *
 			return pickHTTPField(data, size, HTTP_OFFSET_CONTENT_TYPE, &session->rsp_content_length);
 		}
 
-		if ((minor & 0x0000FFFFFFFFFFFFULL) == 0x474E49444F434E45ULL) {	//	ENCODING
+		if ((minor & 0xFFFFFFFFFFFFFFFFULL) == 0x474e49444f434e45ULL) {	//	ENCODING
 			return pickHTTPField(data, size, HTTP_OFFSET_CONTENT_ENCODING, &session->content_encoding);
 		}
 
