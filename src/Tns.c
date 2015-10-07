@@ -1148,7 +1148,7 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	if (total < sizeof(TOracleHead)) return done;
 
 	TSoderoTnsPacketDetail detail = {0};
-	//value->offset = 0;
+	value->offset = 0;
 	int result = 0;
 	//	Now, there must be a Oracle packet is parsed.
 	if (base < value->offset) {
