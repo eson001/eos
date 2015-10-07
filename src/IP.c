@@ -66,8 +66,8 @@ int processIPv4Packet(const void * data, int size, int length, PEtherHeader ethe
 
 	PNodeValue sour = takeIPv4Node((TMACVlan){{ether->sour, vlan}}, packet->head.sIP);
 	PNodeValue dest = takeIPv4Node((TMACVlan){{ether->dest, vlan}}, packet->head.dIP);
-	if (sour) processP(&sour->l2.total.outgoing, length);
-	if (dest) processP(&dest->l2.total.incoming, length);
+//	if (sour) processP(&sour->l2.total.outgoing, length);
+//	if (dest) processP(&dest->l2.total.incoming, length);
 
 	if (sour) processA(&sour->l3.total.outgoing, size);
 	if (dest) processA(&dest->l3.total.incoming, size);

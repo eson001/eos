@@ -361,8 +361,8 @@ void processTCPFIN(PSoderoTCPSession session, PPortKey key, PEtherHeader ether,
 }
 
 void counterTCPNode(PSoderoTCPSession session, PPortKey key, PEtherHeader ether, int size, int length) {
-	TServiceIndex sourIndex = {.node = {.value = {((TMACVlan){{ether->sour, ether->vlan}}).value, key->sIP.ip, 0}}, session->key.destPort};
-	TServiceIndex destIndex = {.node = {.value = {((TMACVlan){{ether->dest, ether->vlan}}).value, key->dIP.ip, 0}}, session->key.destPort};
+	TServiceIndex sourIndex = {.node = {.value = {((TMACVlan){{0, ether->vlan}}).value, key->sIP.ip, 0}}, session->key.destPort};
+	TServiceIndex destIndex = {.node = {.value = {((TMACVlan){{0, ether->vlan}}).value, key->dIP.ip, 0}}, session->key.destPort};
 	PSoderoDoubleDatum sourService = takeServiceNode(&sourIndex);
 	PSoderoDoubleDatum destService = takeServiceNode(&destIndex);
 	if (sourService) processA(&sourService->outgoing, size);

@@ -1660,9 +1660,9 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 	dumpNode(index, k, v);
 #endif
 	if (k->ip.l.ip) {
-		if (isGIPv4(k->ip.l)) return 0;
+//		if (isGIPv4(k->ip.l)) return 0;
 	}
-	if (count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL) > 0) {
+	if (count_of_detail(&v->l2.total, SODERO_PACKET_INDEX_TOTAL) >= 0) {
 		//	Node
 		sodero_report_node(k, nullptr, SODERO_NODES);
 		//	L2

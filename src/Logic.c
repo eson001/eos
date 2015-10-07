@@ -166,11 +166,13 @@ PNodeValue takeMACNode(PMAC key) {
 }
 
 PNodeValue takeIPv4Node(TMACVlan head, TIPv4 key) {
-	TNodeIndex index = {.value = {head.value, 0, 0}};
+	TNodeIndex index = {.value = {0, 0, 0}};
 
-	//	Just set the internal IP, all external IP are calculated to 0.0.0.0
+	//	Just set the internal IP, all external IP are calculated to 1.1.1.1
 	if (isLIPv4(key))
 		index.ip.l.ip = key.ip;
+    else
+		index.ip.l.ip = 0x01010101;
 
 	PNodeValue value = (PNodeValue)sodero_map_ensure(getPeriodResult()->nodes.items, &index);
 
