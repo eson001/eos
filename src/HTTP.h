@@ -99,6 +99,11 @@ typedef struct SODERO_HTTP_VALUE {
 	unsigned long long rttValue;
 	unsigned int       rttCount;
 	unsigned int       l2;
+	unsigned int       x10;
+	unsigned int       x20;
+	unsigned int       x30;
+	unsigned int       x40;
+	unsigned int       x50;
 
 	TSoderoUnitDatum request,response,wait;
 //	unsigned int       method;

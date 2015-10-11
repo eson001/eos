@@ -1060,7 +1060,9 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
 					record->wait_time = value->rspFirst - value->reqLast;
-					SODERO_SAFE_TEXT(record, database, value->sql);
+					SODERO_SAFE_TEXT(record, statement, value->sql);
+					SODERO_SAFE_TEXT(record, error_code, value->error_code);
+					SODERO_SAFE_TEXT(record, error_msg, value->error_str);
 					//record->reqCount = value->traffic.outgoing.count;
 					record->req_bytes = value->req_bytes;
 					record->req_pkts = value->traffic.outgoing.count;
@@ -1089,7 +1091,10 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->rsp_time = value->rspLast - value->rspFirst;
 					record->wait_time = value->rspFirst - value->reqLast;
 
-					SODERO_SAFE_TEXT(record, database, value->sql);
+					SODERO_SAFE_TEXT(record, statement, value->sql);
+					SODERO_SAFE_TEXT(record, error_code, value->error_code);
+					SODERO_SAFE_TEXT(record, error_msg, value->error_str);
+					
 					//record->reqCount = value->traffic.outgoing.count;
 					record->req_bytes = value->traffic.outgoing.bytes;
 					record->req_pkts = value->traffic.outgoing.count;
@@ -1560,6 +1565,12 @@ const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_COUNT  = "http.rsp_pkts" ;
 const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_BYTES  = "http.rsp_bytes";
 const char * SODERO_REPORT_IDENT_HTTP_OUTGOING_L2_BYTE= "http.rsp_l2_bytes";
 
+const char * SODERO_REPORT_IDENT_HTTP_STATUS1XX = "http.status.1xx";
+const char * SODERO_REPORT_IDENT_HTTP_STATUS2XX = "http.status.2xx";
+const char * SODERO_REPORT_IDENT_HTTP_STATUS3XX = "http.status.3xx";
+const char * SODERO_REPORT_IDENT_HTTP_STATUS4XX = "http.status.4xx";
+const char * SODERO_REPORT_IDENT_HTTP_STATUS5XX = "http.status.5xx";
+
 const char * SODERO_REPORT_IDENT_HTTP_METHOD = "http.method";
 const char * SODERO_REPORT_IDENT_HTTP_ERROR  = "http.error" ;
 const char * SODERO_REPORT_IDENT_HTTP_RTT    = "http.rtt"   ;
@@ -1755,6 +1766,13 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_REQUEST_L2_BYTES , v->l4.http.outgoing.l2, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_RESPONSE_L2_BYTES, v->l4.http.incoming.l2, metricCount);
 
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_STATUS1XX, v->l4.http.incoming.x10, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_STATUS2XX, v->l4.http.incoming.x20, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_STATUS3XX, v->l4.http.incoming.x30, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_STATUS4XX, v->l4.http.incoming.x40, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_STATUS5XX, v->l4.http.incoming.x50, metricCount);
+
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_METHOD, v->l4.http.outgoing.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_HTTP_ERROR , v->l4.http.incoming.count, metricCount);
 
@@ -1805,7 +1823,7 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 	    SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_COUNT , v->l4.tns.outgoing.reqs, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_PKT_COUNT , v->l4.tns.outgoing.value.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQUEST_BYTES , v->l4.tns.outgoing.value.bytes, metricCount);
-		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT, v->l4.tns.incoming.rsps, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_COUNT, v->l4.tns.incoming.reqs, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_PKT_COUNT, v->l4.tns.incoming.value.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RESPONSE_BYTES, v->l4.tns.incoming.value.bytes, metricCount);
 

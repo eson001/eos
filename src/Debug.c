@@ -565,6 +565,7 @@ void simulate(const char * file) {
 			if (gLoop > 0) gLoop--;
 		} while(gLoop);
 	}
+	sodero_report_result(timerHandler(gTime + 40 * uSecsPerSec), getSessionManager());
 }
 
 void capture(void) {

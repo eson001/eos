@@ -139,7 +139,9 @@ typedef union SODERO_TNS_APPLICATION {
 		unsigned char rsp_aborted;	//	If the connection was closed when receiving response
 	
 //		char * tail;
-              char sql[1024];
+        char sql[1024];
+		char error_code[16];
+		char error_str[128];
 		unsigned char command;
 		unsigned char flow;			//	command flow's branch
 		unsigned char step;			//	flow's step

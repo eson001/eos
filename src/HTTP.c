@@ -190,13 +190,37 @@ void processHTTPNode(int dir, PTCPHeader tcp, PIPHeader ip, PEtherHeader ether, 
 	if (dir < 0) {	//	response
 		if (sourNode) {
 			sourNode->l4.http.outgoing.action++;
+			
+			if (value >= 500)
+				sourNode->l4.http.incoming.x50++;
+			else if (value >= 400)
+				sourNode->l4.http.incoming.x40++;
+			else if (value >= 300)
+				sourNode->l4.http.incoming.x30++;
+			else if (value >= 200) {
+				sourNode->l4.http.incoming.x20++;
+			} else if (value >= 100)
+				sourNode->l4.http.incoming.x10++;
+			
 			if (value >= 400)
 				sourNode->l4.http.incoming.count++;	//	error in incoming
 		}
-		if (destNode) {
+
+		if (destNode && (sourNode != destNode)) {
 			destNode->l4.http.incoming.action++;
 			if (value >= 400)
 				destNode->l4.http.incoming.count++;	//	error in incoming
+				
+			if (value >= 500)
+				destNode->l4.http.incoming.x50++;
+			else if (value >= 400)
+				destNode->l4.http.incoming.x40++;
+			else if (value >= 300)
+				destNode->l4.http.incoming.x30++;
+			else if (value >= 200) {
+				destNode->l4.http.incoming.x20++;
+			} else if (value >= 100)
+				destNode->l4.http.incoming.x10++;
 		}
 		return;
 	}
