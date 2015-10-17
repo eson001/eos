@@ -396,14 +396,21 @@ int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
 //}
 
 int sodero_xdr_cmd_value(int * fd, unsigned int time, PNodeIndex index, PXDRFieldName name, unsigned long long value) {
+	char * l2type = strcasestr(name->string, "l2.");
 	if (isExportVerbose())
 		printf("Node %.2x:%.2x:%.2x:%.2x:%.2x:%.2x-%u.%u.%u.%u XDR %s %llu\n",
 				index->mac.bytes[0], index->mac.bytes[1], index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5],
 				index->ip.l.s[0], index->ip.l.s[1], index->ip.l.s[2], index->ip.l.s[3], name->string, value);
 
-       /*write to log file*/
-       LogDbg("[Metric:%d |%s |%.2x:%.2x:%.2x:%.2x:%.2x:%.2x |%u.%u.%u.%u | %llu ]",time, name->string, index->mac.bytes[0], index->mac.bytes[1], 
-                            index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5], index->ip.l.s[0], index->ip.l.s[1], index->ip.l.s[2], index->ip.l.s[3],value);
+	/*write to log file*/
+	if (l2type != NULL){
+		LogDbg("[Metric:%d |%s |%.2x:%.2x:%.2x:%.2x:%.2x:%.2x |0.0.0.0 | %llu ]",time, name->string, index->mac.bytes[0], index->mac.bytes[1], 
+            index->mac.bytes[2], index->mac.bytes[3], index->mac.bytes[4], index->mac.bytes[5], value);
+	}
+	else{
+		LogDbg("[Metric:%d |%s |00:00:00:00:00:00 |%u.%u.%u.%u | %llu ]",time, name->string, index->ip.l.s[0], index->ip.l.s[1],
+			index->ip.l.s[2], index->ip.l.s[3],value);
+	}
        
 	XDR xdr;
 	char buffer[XDR_BUFFER_SIZE];
@@ -1892,13 +1899,13 @@ long map_service_report_handlor(PSoderoMap container, int index, PServiceIndex k
 	}
 
 	char name[256];
-	snprintf(name, sizeof(name)-1, "tcp.req_pkts|l4_group|%hu", (unsigned short) k->port);
+	snprintf(name, sizeof(name)-1, "tcp.req_pkts|l4_group|%hu", (unsigned short) htons(k->port));
 	SODERO_REPORT_VALUE(&k->node, name, v->outgoing.count, metricCount);
-	snprintf(name, sizeof(name)-1, "tcp.req_bytes|l4_group|%hu", (unsigned short) k->port);
+	snprintf(name, sizeof(name)-1, "tcp.req_bytes|l4_group|%hu", (unsigned short) htons(k->port));
 	SODERO_REPORT_VALUE(&k->node, name, v->outgoing.bytes, metricCount);
-	snprintf(name, sizeof(name)-1, "tcp.rsp_pkts|l4_group|%hu", (unsigned short) k->port);
+	snprintf(name, sizeof(name)-1, "tcp.rsp_pkts|l4_group|%hu", (unsigned short) htons(k->port));
 	SODERO_REPORT_VALUE(&k->node, name, v->incoming.count, metricCount);
-	snprintf(name, sizeof(name)-1, "tcp.rsp_bytes|l4_group|%hu", (unsigned short) k->port);
+	snprintf(name, sizeof(name)-1, "tcp.rsp_bytes|l4_group|%hu", (unsigned short) htons(k->port));
 	SODERO_REPORT_VALUE(&k->node, name, v->incoming.bytes, metricCount);
 
 	return 0;
