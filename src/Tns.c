@@ -673,10 +673,11 @@ bool tns_parse_sql_query_oci(PSoderoTnsApplication application, struct cursor *c
 
 void updateTnsRequestState(PSoderoTnsApplication application, PTCPState state) {
 	if (application) {
-		if (state->application == application) return;
+		//if (state->application == application) return;
 		state->application = application;
 		application->req_pkts     ++;
 		application->req_bytes    += state->payload;
+		if (state->payload)
 		application->req_l2_bytes += state->length;
 		//application->reqRTTValue  += state->rttTime;
 		//application->reqRTTCount  += state->rtt;
@@ -687,7 +688,7 @@ void updateTnsRequestState(PSoderoTnsApplication application, PTCPState state) {
 
 void updateTnsResponseState(PSoderoTnsApplication application, PTCPState state) {
 	if (application) {
-		if (state->application == application) return;
+		//if (state->application == application) return;
 		state->application = application;
 		
 		application->rsp_pkts     ++;
@@ -770,6 +771,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 	if (data_flag) {
 		if (application) {
 			//detail->reqs++;
+			application->rspLast = gTime;
 			detail->app_end = 1;
 			//sodero_pointer_add(getClosedApplications(), application);
 	        //session->session = nullptr;
@@ -783,6 +785,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 	if (ttc_code == 0x09) { //oracle complite
 		if (application) {
 			//detail->reqs++;
+			application->rspLast = gTime;
 			detail->app_end = 1;
 			//sodero_pointer_add(getClosedApplications(), application);
 	        //session->session = nullptr;
@@ -854,7 +857,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		            copy_token(application->error_code, sizeof(application->error_code), str - code_len, code_len);
 					str += 1;
 					cursor_drop(cursor, 1);
-					str_len -= 2;
+					str_len -= 1;
 					copy_token(application->error_str, sizeof(application->error_str), str, str_len);
 		    }
            }
@@ -905,10 +908,11 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
         	}
 
 			DROP_FIX(cursor, 1);
-            if (is_oci(cursor)) 
+            if (is_oci(cursor) && !application->sql_flag) 
             {
                 // Option is not prefix based, seems like an oci query
-                tns_parse_sql_query_oci(application, cursor);
+                if (tns_parse_sql_query_oci(application, cursor))
+					application->sql_flag = 1;
                       
             }
 
@@ -929,15 +933,19 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 				application->command = TNS_METHOD_SQL;
 				application->step = TNS_STEP_REQ_START;
 				application->reqFirst = gTime;
+				application->req_bytes += detail->size;
+				application->req_l2_bytes += detail->length;
+				application->req_pkts++;
 				detail->reqs = 1;
         	}
 			
 
 			DROP_FIX(cursor, 1);
-            if (is_oci(cursor)) 
+            if (is_oci(cursor) && !application->sql_flag) 
             {
                 // Option is not prefix based, seems like an oci query
-                tns_parse_sql_query_oci(application, cursor);
+                if (tns_parse_sql_query_oci(application, cursor))
+					application->sql_flag = 1;
                       
             }
 
@@ -983,6 +991,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		printf("parseTnsData: application = %p\r\n", application);
 		if (application) 
 		{
+			processA(&application->traffic.outgoing, detail->size);
 			if (application->step != TNS_STEP_REQ_MORE)
 		    	detail->command++;
 			application->reqLast = gTime;
@@ -1046,7 +1055,7 @@ int parseTnsOther(PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int 
        PSoderoTnsApplication application = session->session;
 	if (dir > 0) {	//	Response
 		if (application) {
-			processA(&application->traffic.incoming, total);
+			processA(&application->traffic.outgoing, detail->size);
 			if (!application->rspFirst)
 				application->rspFirst = gTime;
 			if (application->rspLast < gTime)
@@ -1241,6 +1250,8 @@ int processTNSPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 
 	TSoderoTnsPacketDetail detail = {0};
 	value->offset = 0;
+	detail.size = size;
+	detail.length = length;
 	int result = 0;
 	//	Now, there must be a Oracle packet is parsed.
 	if (base < value->offset) {

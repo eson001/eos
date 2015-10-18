@@ -139,6 +139,7 @@ typedef union SODERO_TNS_APPLICATION {
 		unsigned char rsp_aborted;	//	If the connection was closed when receiving response
 	
 //		char * tail;
+		char sql_flag;
         char sql[1024];
 		char error_code[16];
 		char error_str[128];
@@ -160,6 +161,8 @@ typedef union SODERO_TNS_PACKET_DETAIL {
 		unsigned char app_end;
 		unsigned int reqs;
 		unsigned int rsps;
+		unsigned int size;
+		unsigned int length;
 	};
 } TSoderoTnsPacketDetail, * PSoderoTnsPacketDetail;
 

@@ -1038,7 +1038,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->flow_id = value->id;
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
-					record->wait_time = value->rspFirst - value->reqLast;
+					record->wait_time = value->rspFirst - value->reqFirst;
 					SODERO_SAFE_TEXT(record, user, value->user);
 					SODERO_SAFE_TEXT(record, database, value->database);
 					//record->status = value->status;
@@ -1059,7 +1059,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->flow_id = value->id;
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
-					record->wait_time = value->rspFirst - value->reqLast;
+					record->wait_time = value->rspFirst - value->reqFirst;
 					SODERO_SAFE_TEXT(record, statement, value->sql);
 					SODERO_SAFE_TEXT(record, error_code, value->error_code);
 					SODERO_SAFE_TEXT(record, error_msg, value->error_str);
@@ -1089,7 +1089,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->flow_id = value->id;
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
-					record->wait_time = value->rspFirst - value->reqLast;
+					record->wait_time = value->rspFirst - value->reqFirst;
 
 					SODERO_SAFE_TEXT(record, statement, value->sql);
 					SODERO_SAFE_TEXT(record, error_code, value->error_code);
