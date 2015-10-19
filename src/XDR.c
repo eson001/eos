@@ -85,13 +85,17 @@ int xdr_encode_field_value (XDR * xdr, unsigned int time, PNodeIndex index, PXDR
 	TSoderoUDPReportMsg message;
 	bzero(&message, sizeof(message));
 	message.type = COUNT_METRIC;
+	char * l2type = strcasestr(field->string, "l2.");
 
 	xdr_data(message.TSoderoUDPReportMsg_u.count_metric.agent_id, gAgentID);
 	xdr_data(message.TSoderoUDPReportMsg_u.count_metric.time, time);
-	xdr_copy(message.TSoderoUDPReportMsg_u.count_metric.mac , index->mac.bytes);
+	if (l2type != NULL){
+		xdr_copy(message.TSoderoUDPReportMsg_u.count_metric.mac , index->mac.bytes);
+	}
 	xdr_data(message.TSoderoUDPReportMsg_u.count_metric.vlan, index->vlan);
-
-	xdr_copy(message.TSoderoUDPReportMsg_u.count_metric.ip  , index->ip .bytes);
+	if (l2type == NULL){
+		xdr_copy(message.TSoderoUDPReportMsg_u.count_metric.ip  , index->ip .bytes);
+	}
 	xdr_data(message.TSoderoUDPReportMsg_u.count_metric.metrics.metrics_len , field->length);
 	xdr_data(message.TSoderoUDPReportMsg_u.count_metric.metrics.metrics_val , field->string);
 	xdr_data(message.TSoderoUDPReportMsg_u.count_metric.count, value);
