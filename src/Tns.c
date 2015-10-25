@@ -766,7 +766,11 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 	if (cursor->cap_len < 4){
 		if (application) {
 			//detail->reqs++;
-			application->rspLast = gTime;
+			//detail->reqs++;
+			    if (!application->rspFirst)
+                application->rspFirst = gTime;
+            if (application->rspLast < gTime)
+                application->rspLast = gTime;
 			detail->app_end = 1;
 			//sodero_pointer_add(getClosedApplications(), application);
 	        //session->session = nullptr;
@@ -887,6 +891,9 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 				session->session = application;
 				application->step = TNS_STEP_REQ_START;
 				application->reqFirst = gTime;
+				application->req_bytes += detail->size;
+				application->req_l2_bytes += detail->length;
+				application->req_pkts++;
 				detail->reqs = 1;
         	}
 

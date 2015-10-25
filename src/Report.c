@@ -1843,20 +1843,20 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 		
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_MIN, v->l4.tns.outgoing.request.min, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_MAX , v->l4.tns.outgoing.request.max, metricCount);
-		if (v->l4.http.outgoing.request.count)
-			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_AVG , v->l4.tns.outgoing.request.sum / (v->l4.http.outgoing.request.count), metricCount);
+		if (v->l4.tns.outgoing.request.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_REQ_TIME_AVG , v->l4.tns.outgoing.request.sum / (v->l4.tns.outgoing.request.count), metricCount);
 
 		
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_MIN, v->l4.tns.outgoing.wait.min, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_MAX , v->l4.tns.outgoing.wait.max, metricCount);
-		if (v->l4.http.outgoing.wait.count)
-			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_AVG , v->l4.tns.outgoing.wait.sum / (v->l4.http.outgoing.wait.count), metricCount);
+		if (v->l4.tns.outgoing.wait.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_WAIT_TIME_AVG , v->l4.tns.outgoing.wait.sum / (v->l4.tns.outgoing.wait.count), metricCount);
 
 		
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_MIN, v->l4.tns.outgoing.response.min, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_MAX , v->l4.tns.outgoing.response.max, metricCount);
-		if (v->l4.http.outgoing.response.count)
-			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_AVG , v->l4.tns.outgoing.response.sum / (v->l4.http.outgoing.response.count), metricCount);
+		if (v->l4.tns.outgoing.response.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RES_TIME_AVG , v->l4.tns.outgoing.response.sum / (v->l4.tns.outgoing.response.count), metricCount);
 
 		rttValue = v->l4.tns.incoming.rttValue + v->l4.tns.outgoing.rttValue;
 		rttCount = v->l4.tns.incoming.rttCount + v->l4.tns.outgoing.rttCount;
