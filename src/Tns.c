@@ -22,6 +22,11 @@
 #define DBNAME_TOKEN1   "(SID="
 #define ERROR_TOKEN   "ORA-"
 
+#define MIN_QUERY_SIZE 10
+#define QUERY_WITH_SIZE 12
+#define MAX_OCI_CHUNK 0x40
+
+
 #define skipData(count) {                                                                \
 	base += sizeof(result->count);                                                       \
 	}
@@ -185,6 +190,20 @@ void cursor_rollback(struct cursor *cursor, size_t n)
         return 0;                                                     \
     cursor_drop(cursor, len);
 
+
+#define DROP_VAR(cursor)                                                            \
+    if (cursor_read_variable_int(cursor, NULL) == false)              \
+        return false;
+
+
+#define DROP_VARS(cursor, count)                                                    \
+    for(unsigned x = 0; x < count; x++) {                                           \
+        if ((status = cursor_read_variable_int(cursor, NULL) != true))          \
+        return status;                                                              \
+    }
+
+
+
 #define NB_ELEMS(array) (sizeof array / sizeof array[0])
 
 unsigned char read_u8(struct cursor *cursor)
@@ -258,6 +277,14 @@ int cursor_read_fixed_string(struct cursor *cursor, char *out_buf, size_t size_b
     }
     return copied_len;
 }
+
+void copy_string(char *dest, char const *src, size_t dest_size)
+{
+    strncpy(dest, src, dest_size);
+    if (dest_size)
+        dest[dest_size - 1] = '\0';
+}
+
 
 /* Read a string prefixed by 1 byte size
  * Size  String-------------
@@ -758,6 +785,62 @@ static bool is_oci(struct cursor *cursor)
 }
 
 
+/*
+ * | 1 byte | 1 + 0-8 bytes | 1 byte | 1 + 0-4 bytes  | Lots of unknown bytes | variable  |
+ * | Unk    | Sql len       | Unk    | Num end fields | Unk                   | sql query |
+ */
+static bool tns_parse_sql_query_jdbc(PSoderoTnsApplication application, struct cursor *cursor)
+{
+    printf("Parsing a jdbc query\r\n");
+    bool status = true;
+
+    DROP_FIX(cursor, 1);
+
+    uint_least64_t sql_len;
+    if (true != (status = cursor_read_variable_int(cursor, &sql_len))) return status;
+     printf("Size sql %zu\r\n", sql_len);
+
+    DROP_FIX(cursor, 1);
+    DROP_VAR(cursor);
+    DROP_FIX(cursor, 2);
+
+   application->sql[0] = '\0';
+    //info->u.query.truncated = 0; // TODO Handle truncated
+    if (sql_len > 0) {
+        // Some unknown bytes
+        while (cursor->cap_len > 1 && true != is_range_print(cursor, MIN(MIN_QUERY_SIZE, sql_len), 1)) {
+            // TODO drop to the first non printable
+            cursor_drop(cursor, 1);
+        }
+        CHECK(1);
+        if (sql_len > 0xff && 0xff == cursor_peek_u8(cursor, 0)) {
+            printf("Looks like prefixed length chunks of size 0xff...\r\n");
+            status = cursor_read_chunked_string(cursor, application->sql, sizeof(application->sql), 0xff);
+        } else if (sql_len > MAX_OCI_CHUNK && MAX_OCI_CHUNK == cursor_peek_u8(cursor, 0)) {
+            printf("Looks like prefixed length chunks of size 0x40...\r\n");
+            status = cursor_read_chunked_string(cursor, application->sql, sizeof(application->sql),
+                    MAX_OCI_CHUNK);
+        } else {
+            // We don't care about the first non printable character
+            cursor_drop(cursor, 1);
+            CHECK(1);
+            // In rare occurrence where sql_len == first character, we check the byte after the expected query,
+            // if it's printable, the first character is probably the prefixed size.
+            if (cursor_peek_u8(cursor, 0) == sql_len && sql_len < cursor->cap_len && is_print(cursor_peek_u8(cursor, sql_len)))
+                cursor_drop(cursor, 1);
+            printf("Looks like a fixed string of size %zu\r\n", sql_len);
+            int written_bytes = cursor_read_fixed_string(cursor, application->sql,
+                    sizeof(application->sql), sql_len);
+            if (written_bytes < 0) return false;
+        }
+        if (status != true) return status;
+    }
+    printf("Sql parsed: %s\r\n", application->sql);
+    //info->set_values |= SQL_SQL;
+
+    return true;
+}
+
 int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTCPSession session, int dir,
         POracleHead const head, const unsigned char * data, int size, int total) 
 {
@@ -809,44 +892,28 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 					//processE(&application->response, application->rspLast - application->rspFirst);
 				}
 
-				char const *str, *str_start = cursor->head + cursor->cap_len - 2;
-				int code_len = 0, str_len = 0;
-				{
-					int i = 0;
-					
-					for (i = cursor->cap_len; i; i--) {
-						
-						if(isalpha(*str_start) || isspace(*str_start) 
-							|| isdigit(*str_start) || *str_start == '\"' 
-							|| *str_start == ':' || *str_start == '.' || *str_start == '-') {
-							
-							*str_start--;
-							str_len++;
-						} else
-							break;
-					}
-				}
+				char const *str;
+				int str_len = 0;
+				char marker[4] = {0x4f, 0x52, 0x41, 0x2d};
 
-				str_start++;
-				
-		       	if (NULL != (str = strstr((char const *)str_start, ERROR_TOKEN))) {
-					
-		            str += strlen(ERROR_TOKEN);
-					str_len -= strlen(ERROR_TOKEN);
-					cursor_drop(cursor, strlen(ERROR_TOKEN));
-					while(isdigit(*str)) {
-						code_len++;
-						str++;
-					}
-					
-					cursor_drop(cursor, code_len);
-					str_len -= code_len;
-		            copy_token(application->error_code, sizeof(application->error_code), str - code_len, code_len);
-					str += 1;
-					cursor_drop(cursor, 1);
-					str_len -= 1;
-					copy_token(application->error_str, sizeof(application->error_str), str, str_len);
-		    }
+				//char *colon_pos = memchr(cursor->head, ':', cursor->cap_len);
+				unsigned char const *new_head = memmem(cursor->head, cursor->cap_len, marker, 4);
+    			if (new_head) {
+					size_t gap_size = new_head - cursor->head;
+           			DROP_FIX(cursor, gap_size + sizeof(marker));
+
+					str = cursor->head;
+					while((*str++ != ':') && (str_len < cursor->cap_len))
+						str_len++;
+
+					copy_token(application->error_code, sizeof(application->error_code), cursor->head, str_len);
+					DROP_FIX(cursor, str_len + 2);
+
+					copy_token(application->error_str, sizeof(application->error_str), cursor->head, cursor->cap_len - 1);
+					cursor_drop(cursor, str_len);
+					detail->app_end = 1;
+    			}
+
            }
 /*
 		   if ((ttc_code == 0x10) && (ttc_subcode == 0x17)) {
@@ -898,12 +965,21 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
         	}
 
 			DROP_FIX(cursor, 1);
-            if (is_oci(cursor) && !application->sql_flag) 
-            {
+            if (is_oci(cursor) && !application->sql_flag) {
                 // Option is not prefix based, seems like an oci query
                 if (tns_parse_sql_query_oci(application, cursor))
 					application->sql_flag = 1;
                       
+            } else if (!application->sql_flag){
+            	struct cursor save_cursor = *cursor;
+		        if (tns_parse_sql_query_jdbc(application, cursor) != true) {
+		            // Fallback to query guessing
+		            //printf("jdbc query failed, fallback to oci\r\n");
+		            *cursor = save_cursor;
+		            return tns_parse_sql_query_oci(application, cursor);
+		        } else {
+		            return true;
+		        }
             }
 
 			if (strstr(application, "PROCEDURE"))
@@ -936,7 +1012,17 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
                 // Option is not prefix based, seems like an oci query
                 if (tns_parse_sql_query_oci(application, cursor))
 					application->sql_flag = 1;
-                      
+                   
+            } else if (!application->sql_flag){
+            	struct cursor save_cursor = *cursor;
+		        if (tns_parse_sql_query_jdbc(application, cursor) != true) {
+		            // Fallback to query guessing
+		            //printf("jdbc query failed, fallback to oci\r\n");
+		            *cursor = save_cursor;
+		            return tns_parse_sql_query_oci(application, cursor);
+		        } else {
+		            return true;
+		        }
             }
 
 			if (strstr(application, "PROCEDURE"))
