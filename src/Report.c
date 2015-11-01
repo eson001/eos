@@ -1072,11 +1072,11 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					SODERO_SAFE_TEXT(record, error_msg, value->error_str);
 					//record->reqCount = value->traffic.outgoing.count;
 					record->req_bytes = value->req_bytes;
-					record->req_pkts = value->traffic.outgoing.count;
+					record->req_pkts = value->req_pkts;
 					record->req_l2_bytes = value->req_l2_bytes;
 					//record->rspCount = value->traffic.incoming.count;
 					record->rsp_bytes = value->rsp_bytes;
-					record->rsp_pkts = value->traffic.incoming.count;
+					record->rsp_pkts = value->rsp_pkts;
 					record->rsp_l2_bytes = value->rsp_l2_bytes;
 					record->rsp_records = value->rsps; /* not support now */
 					record->rsp_datasets = value->set; /* not support now */
@@ -1103,12 +1103,13 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					SODERO_SAFE_TEXT(record, error_msg, value->error_str);
 					
 					//record->reqCount = value->traffic.outgoing.count;
-					record->req_bytes = value->traffic.outgoing.bytes;
-					record->req_pkts = value->traffic.outgoing.count;
+					
+					record->req_bytes = value->req_bytes;
+					record->req_pkts = value->req_pkts;
 					record->req_l2_bytes = value->req_l2_bytes;
 					//record->rspCount = value->traffic.incoming.count;
-					record->rsp_bytes = value->traffic.incoming.bytes;
-					record->rsp_pkts = value->traffic.incoming.count;
+					record->rsp_bytes = value->rsp_bytes;
+					record->rsp_pkts = value->rsp_pkts;
 					record->rsp_l2_bytes = value->rsp_l2_bytes;
 					record->rsp_records = value->rsps;
 					record->rsp_datasets = value->set;

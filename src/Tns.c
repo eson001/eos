@@ -1052,8 +1052,10 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 				char * tail = application->text;
 				application->command = TNS_METHOD_LOGIN;
 				application->status = session->value.tns.status;
-				application->reqTime = session->value.tns.login.reqTime;
-				application->rspTime = session->value.tns.login.rspTime;
+				application->reqFirst = 0;
+				application->reqLast = 0;
+				application->rspFirst = 0;
+				application->rspLast = 0;
 				application->user     = copyField(tail, user, 128);
 				application->database = copyField(tail, session->value.tns.login.database, 128);
 				sodero_pointer_add(getClosedApplications(), application);
