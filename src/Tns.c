@@ -791,14 +791,14 @@ static bool is_oci(struct cursor *cursor)
  */
 static bool tns_parse_sql_query_jdbc(PSoderoTnsApplication application, struct cursor *cursor)
 {
-    printf("Parsing a jdbc query\r\n");
+    //printf("Parsing a jdbc query\r\n");
     bool status = true;
 
     DROP_FIX(cursor, 1);
 
     uint_least64_t sql_len;
     if (true != (status = cursor_read_variable_int(cursor, &sql_len))) return status;
-     printf("Size sql %zu\r\n", sql_len);
+     //printf("Size sql %zu\r\n", sql_len);
 
     DROP_FIX(cursor, 1);
     DROP_VAR(cursor);
@@ -814,10 +814,10 @@ static bool tns_parse_sql_query_jdbc(PSoderoTnsApplication application, struct c
         }
         CHECK(1);
         if (sql_len > 0xff && 0xff == cursor_peek_u8(cursor, 0)) {
-            printf("Looks like prefixed length chunks of size 0xff...\r\n");
+            //printf("Looks like prefixed length chunks of size 0xff...\r\n");
             status = cursor_read_chunked_string(cursor, application->sql, sizeof(application->sql), 0xff);
         } else if (sql_len > MAX_OCI_CHUNK && MAX_OCI_CHUNK == cursor_peek_u8(cursor, 0)) {
-            printf("Looks like prefixed length chunks of size 0x40...\r\n");
+            //printf("Looks like prefixed length chunks of size 0x40...\r\n");
             status = cursor_read_chunked_string(cursor, application->sql, sizeof(application->sql),
                     MAX_OCI_CHUNK);
         } else {
@@ -828,14 +828,14 @@ static bool tns_parse_sql_query_jdbc(PSoderoTnsApplication application, struct c
             // if it's printable, the first character is probably the prefixed size.
             if (cursor_peek_u8(cursor, 0) == sql_len && sql_len < cursor->cap_len && is_print(cursor_peek_u8(cursor, sql_len)))
                 cursor_drop(cursor, 1);
-            printf("Looks like a fixed string of size %zu\r\n", sql_len);
+            //printf("Looks like a fixed string of size %zu\r\n", sql_len);
             int written_bytes = cursor_read_fixed_string(cursor, application->sql,
                     sizeof(application->sql), sql_len);
             if (written_bytes < 0) return false;
         }
         if (status != true) return status;
     }
-    printf("Sql parsed: %s\r\n", application->sql);
+    //printf("Sql parsed: %s\r\n", application->sql);
     //info->set_values |= SQL_SQL;
 
     return true;
@@ -1064,7 +1064,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 			}
 		}
 
-		printf("parseTnsData: application = %p\r\n", application);
+		//printf("parseTnsData: application = %p\r\n", application);
 		if (application) 
 		{
 			processA(&application->traffic.outgoing, detail->size);
