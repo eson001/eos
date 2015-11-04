@@ -92,6 +92,8 @@ typedef struct ADDRESS_INFO {
 	  struct sockaddr addr;
 } TAddressInfo, * PAddressInfo;
 
+extern TSoderoShmMsg *gShmMsg;
+extern TSoderoShmMsg *sodero_get_shm(void);
 
 //extern int sodero_report_shakehand(void);
 //extern int sodero_report_finished(unsigned int count);

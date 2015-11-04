@@ -516,6 +516,16 @@ struct TSoderoTCPReportMsg {
 };
 typedef struct TSoderoTCPReportMsg TSoderoTCPReportMsg;
 
+#define MSG_NUM 150000
+struct TSoderoShmMsg {
+	unsigned int head;
+	unsigned int tail;	
+	unsigned long long write_count;
+	unsigned long long read_count;
+	TSoderoTCPReportMsg report_msg[MSG_NUM];
+};
+typedef struct TSoderoShmMsg TSoderoShmMsg;
+
 struct TSoderoCountMetricMsg {
 	u_int agent_id;
 	u_char mac[6];

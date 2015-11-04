@@ -29,6 +29,8 @@
 #if defined(__FreeBSD__) || defined(__APPLE__)
 #include <net/if_dl.h>
 #endif
+#include <sys/ipc.h>
+#include <sys/shm.h>
 
 #include "interface.h"
 #include "flow_stats_api.h"
@@ -56,6 +58,7 @@ int gUDPBytes;
 
 int  gTCPOffset = 0;
 char gTCPBuffer[2 * XDR_BUFFER_SIZE];
+TSoderoShmMsg *gShmMsg = NULL;
 
 #define CHECK_SESSION_RECORD_VALUE(type, name, record) \
 	checkSessionValue(&value->key, type, #name, record->name);
@@ -375,6 +378,11 @@ int sodero_xdr_cmd_node(int * fd, unsigned int time, PNodeIndex node, const char
 int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
 	XDR xdr;
 	char buffer[XDR_BUFFER_SIZE];
+	if (message->type == SESSION_EVENT)
+	{
+		sodero_write_message(message);
+	}
+
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_TSoderoTCPReportMsg(&xdr, message)) {
 		int length = xdr_getpos(&xdr);
@@ -2214,3 +2222,77 @@ int sodero_report_tcp_application(PSoderoApplication application, int flag) {
 	}
 	return true;
 }
+
+TSoderoShmMsg *sodero_get_shm(void)
+{
+	int shm_id = 0;
+	int create = 1;
+	key_t key;
+	TSoderoShmMsg *pShm = NULL;
+
+	key = ftok("/dev/console", 0);
+	if (key == -1)
+	{
+		perror("ftok error");
+		return NULL;
+	}
+
+	shm_id = shmget(key, sizeof(TSoderoShmMsg), SHM_R|SHM_W|IPC_CREAT|IPC_EXCL);	
+	if (shm_id == -1)
+	{
+		if (errno == EEXIST)
+		{
+			shm_id = shmget(key, 0, SHM_R|SHM_W);
+			create = 0;
+		}
+		else
+		{
+			printf("Create Share Memory Error:%s\n", strerror(errno));
+			return NULL;
+		}
+	}
+
+	pShm = (TSoderoShmMsg *)shmat(shm_id, NULL, 0);
+	if (pShm == NULL)
+	{
+		printf("Share Memory Attach Error:%s\n", strerror(errno));
+		return NULL;
+	}
+
+	if (create == 1)
+	{
+		memset((char *)pShm, 0, sizeof(TSoderoShmMsg));
+	}
+	else
+	{
+		printf("head=%u, tail=%u, write=%llu, read=%llu.\n", 
+			pShm->head, pShm->tail, pShm->write_count, pShm->read_count);
+	}
+	return pShm;
+}
+
+int sodero_write_message(TSoderoTCPReportMsg * message) 
+{
+	TSoderoShmMsg *pMsg = gShmMsg;
+
+	if (pMsg == NULL)
+	{
+		printf("Share Memory Is NULL.\n");
+		return false;
+	}
+
+	if (pMsg->tail == ((pMsg->head + 1) % MSG_NUM))
+	{
+		//printf("Share Memory Is Full.\n");
+		return false;
+	}
+
+	memcpy(&(pMsg->report_msg[pMsg->head]), message, sizeof(TSoderoTCPReportMsg));
+	pMsg->head = (pMsg->head + 1) % MSG_NUM;
+	pMsg->write_count++;
+	/*printf("head=%u, tail=%u, write=%llu, read=%llu.\n", 
+		pMsg->head, pMsg->tail, pMsg->write_count, pMsg->read_count);*/
+
+	return TRUE;
+}
+

@@ -673,6 +673,7 @@ void debug(int argc, char * argv[]) {
 	signal(SIGALRM, alarm_handlor);
 
 	initArguments(argc, argv);
+	gShmMsg = sodero_get_shm();
 	sslol_init();
 	sodero_report_check();
 	if (gDebug) {
