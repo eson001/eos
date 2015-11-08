@@ -4,7 +4,7 @@
  *  Created on: Apr 27, 2015
  *      Author: Yang Liu
  */
-
+#define _GNU_SOURCE 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -958,6 +958,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 				session->session = application;
 				application->step = TNS_STEP_REQ_START;
 				application->reqFirst = gTime;
+				application->reqLast = gTime;
 				application->req_bytes += detail->size;
 				application->req_l2_bytes += detail->length;
 				application->req_pkts++;
@@ -999,6 +1000,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 				application->command = TNS_METHOD_SQL;
 				application->step = TNS_STEP_REQ_START;
 				application->reqFirst = gTime;
+				application->reqLast = gTime;
 				application->req_bytes += detail->size;
 				application->req_l2_bytes += detail->length;
 				application->req_pkts++;
