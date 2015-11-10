@@ -378,16 +378,19 @@ int sodero_xdr_cmd_node(int * fd, unsigned int time, PNodeIndex node, const char
 int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
 	XDR xdr;
 	char buffer[XDR_BUFFER_SIZE];
-	if (message->type == SESSION_EVENT)
-	{
-		sodero_write_message(message);
-	}
 
 	sodero_init_xdr_encode(&xdr, buffer, sizeof(buffer));
 	if (xdr_TSoderoTCPReportMsg(&xdr, message)) {
 		int length = xdr_getpos(&xdr);
 		gTCPBytes += length;
-		return write2socket(fd, buffer, length, IPPROTO_TCP);
+		if (message->type == SESSION_EVENT)
+		{
+			return sodero_write_message(buffer);
+		}
+		else
+		{
+			return write2socket(fd, buffer, length, IPPROTO_TCP);
+		}
 	}
 	return false;
 }
@@ -2271,7 +2274,7 @@ TSoderoShmMsg *sodero_get_shm(void)
 	return pShm;
 }
 
-int sodero_write_message(TSoderoTCPReportMsg * message) 
+int sodero_write_message(char * buffer) 
 {
 	TSoderoShmMsg *pMsg = gShmMsg;
 
@@ -2287,7 +2290,7 @@ int sodero_write_message(TSoderoTCPReportMsg * message)
 		return false;
 	}
 
-	memcpy(&(pMsg->report_msg[pMsg->head]), message, sizeof(TSoderoTCPReportMsg));
+	memcpy(&(pMsg->report_msg[pMsg->head]), buffer, XDR_BUFFER_SIZE);
 	pMsg->head = (pMsg->head + 1) % MSG_NUM;
 	pMsg->write_count++;
 	/*printf("head=%u, tail=%u, write=%llu, read=%llu.\n", 
