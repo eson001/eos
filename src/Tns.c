@@ -977,10 +977,8 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		            // Fallback to query guessing
 		            //printf("jdbc query failed, fallback to oci\r\n");
 		            *cursor = save_cursor;
-		            return tns_parse_sql_query_oci(application, cursor);
-		        } else {
-		            return true;
-		        }
+		            (void)tns_parse_sql_query_oci(application, cursor);
+		        } 
             }
 
 			if (strstr(application, "PROCEDURE"))
@@ -1021,9 +1019,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		            // Fallback to query guessing
 		            //printf("jdbc query failed, fallback to oci\r\n");
 		            *cursor = save_cursor;
-		            return tns_parse_sql_query_oci(application, cursor);
-		        } else {
-		            return true;
+		            (void)tns_parse_sql_query_oci(application, cursor);
 		        }
             }
 
