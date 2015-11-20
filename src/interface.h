@@ -517,7 +517,7 @@ struct TSoderoTCPReportMsg {
 };
 typedef struct TSoderoTCPReportMsg TSoderoTCPReportMsg;
 
-#define MSG_NUM 15000
+#define MSG_NUM 50000
 struct TSoderoShmMsg {
 	unsigned int head;
 	unsigned int tail;	

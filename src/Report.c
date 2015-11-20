@@ -1061,7 +1061,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					SODERO_SAFE_TEXT(record, database, value->database);
 					//record->status = value->status;
 		
-					//if (isExportReport()) {
+					if (isExportReport()) {
 						printf("Report - oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 								"\ttime %llu to %llu status %u user %s database %s\n",
 							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
@@ -1069,7 +1069,7 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 							owner->id, value->id, value->serial,
 							value->reqTime, value->rspTime, value->status,
 							value->user ? value->user : "", value->database ? value->database : "");
-					//}
+					}
 				} else if (value->command == TNS_METHOD_SQL){
 					content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_SQL;
 					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
@@ -1092,14 +1092,14 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->rsp_records = value->rsps; /* not support now */
 					record->rsp_datasets = value->set; /* not support now */
 		
-					//if (isExportReport()) {
+					if (isExportReport()) {
 						printf("Report - oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 								"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
 							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
 							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
 							owner->id, value->id, value->serial,
 							value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
-					//}
+					}
 				}else {
 					content->TSoderoTCPSessionContent_u.tns.type = ORACLE_METHOD_PROCEDURE;
 					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
@@ -1125,14 +1125,14 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					record->rsp_records = value->rsps;
 					record->rsp_datasets = value->set;
 		
-					//if (isExportReport()) {
+					if (isExportReport()) {
 						printf("Report - oracle: from %u.%u.%u.%u:%u to %u.%u.%u.%u:%u session %llu application %llu @ %llu\n"
 								"\ttime req %llu to %llu rep %llu to %llu command %u status %u result set %u col %u row %llu\n",
 							owner->key.s[0], owner->key.s[1], owner->key.s[2], owner->key.s[3], ntohs(owner->key.sourPort),
 							owner->key.d[0], owner->key.d[1], owner->key.d[2], owner->key.d[3], ntohs(owner->key.destPort),
 							owner->id, value->id, value->serial,
 							value->reqFirst, value->reqLast, value->rspFirst, value->rspLast, value->command, value->status, value->set, value->col, value->row);
-					//}
+					}
 				}
 		
 
@@ -2286,7 +2286,7 @@ int sodero_write_message(char * buffer)
 
 	if (pMsg->tail == ((pMsg->head + 1) % MSG_NUM))
 	{
-		//printf("Share Memory Is Full.\n");
+		printf("Shared Memory Is Full.\n");
 		return false;
 	}
 
