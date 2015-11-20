@@ -9,7 +9,6 @@
 #define INTERFACE_H_
 
 #include <rpc/rpc.h>
-#include "Type.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -518,12 +517,13 @@ struct TSoderoTCPReportMsg {
 typedef struct TSoderoTCPReportMsg TSoderoTCPReportMsg;
 
 #define MSG_NUM 50000
+#define MSG_SIZE 32 * 1024ULL
 struct TSoderoShmMsg {
-	unsigned int head;
-	unsigned int tail;	
-	unsigned long long write_count;
-	unsigned long long read_count;
-	char report_msg[MSG_NUM][XDR_BUFFER_SIZE];
+    unsigned int head;
+    unsigned int tail;
+    unsigned long long write_count;
+    unsigned long long read_count;
+    char report_msg[MSG_NUM][MSG_SIZE];
 };
 typedef struct TSoderoShmMsg TSoderoShmMsg;
 
