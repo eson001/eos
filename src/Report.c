@@ -2287,7 +2287,7 @@ int sodero_write_message(char * buffer)
 	if (pMsg->tail == ((pMsg->head + 1) % MSG_NUM))
 	{
 		printf("Shared Memory Is Full.\n");
-		return false;
+		return true;
 	}
 
 	memcpy(&(pMsg->report_msg[pMsg->head]), buffer, XDR_BUFFER_SIZE);
