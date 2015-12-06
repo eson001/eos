@@ -169,6 +169,10 @@ struct TSoderoHTTPSessionHead {
 		u_int req_sample_len;
 		u_char *req_sample_val;
 	} req_sample;
+	struct {
+		u_int soap_action_len;
+		u_char *soap_action_val;
+	} soap_action;
 };
 typedef struct TSoderoHTTPSessionHead TSoderoHTTPSessionHead;
 
@@ -182,6 +186,22 @@ struct TSoderoHTTPSessionBody {
 		u_int content_type_len;
 		u_char *content_type_val;
 	} content_type;
+	struct {
+		u_int soap_method_len;
+		u_char * soap_method_val;
+	} soap_method;
+	struct {
+		u_int soap_xmlns_len;
+		u_char * soap_xmlns_val;
+	} soap_xmlns;
+	struct {
+		u_int soap_fault_code_len;
+		u_char * soap_fault_code_val;
+	} soap_fault_code;
+	struct {
+		u_int soap_fault_string_len;
+		u_char * soap_fault_string_val;
+	} soap_fault_string;
 	u_int dns_time;
 	u_int req_time;
 	u_int rsp_time;

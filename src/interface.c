@@ -241,6 +241,10 @@ bool_t xdr_TSoderoHTTPSessionHead(XDR *xdrs, TSoderoHTTPSessionHead *objp) {
 			(u_int *) &objp->req_sample.req_sample_len, ~0, sizeof(u_char),
 			(xdrproc_t) xdr_u_char))
 		return FALSE;
+	if (!xdr_array(xdrs, (char **) &objp->soap_action.soap_action_val,
+			(u_int *) &objp->soap_action.soap_action_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
 	return TRUE;
 }
 
@@ -254,6 +258,26 @@ bool_t xdr_TSoderoHTTPSessionBody(XDR *xdrs, TSoderoHTTPSessionBody *objp) {
 	if (!xdr_array(xdrs, (char **) &objp->content_type.content_type_val,
 			(u_int *) &objp->content_type.content_type_len, ~0,
 			sizeof(u_char), (xdrproc_t) xdr_u_char))
+		return FALSE;
+
+	if (!xdr_array(xdrs, (char **) &objp->soap_method.soap_method_val,
+			(u_int *) &objp->soap_method.soap_method_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+
+	if (!xdr_array(xdrs, (char **) &objp->soap_xmlns.soap_xmlns_val,
+			(u_int *) &objp->soap_xmlns.soap_xmlns_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+
+	if (!xdr_array(xdrs, (char **) &objp->soap_fault_code.soap_fault_code_val,
+			(u_int *) &objp->soap_fault_code.soap_fault_code_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
+		return FALSE;
+
+	if (!xdr_array(xdrs, (char **) &objp->soap_fault_string.soap_fault_string_val,
+			(u_int *) &objp->soap_fault_string.soap_fault_string_len, ~0, sizeof(u_char),
+			(xdrproc_t) xdr_u_char))
 		return FALSE;
 
 	if (!xdr_u_int32_t(xdrs, &objp->dns_time))

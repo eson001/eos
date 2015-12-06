@@ -115,6 +115,12 @@ typedef struct NODE_VALUE {
 		} http;
 		union {
 			struct {
+				TSoderoSOAPValue incoming, outgoing;
+			};
+			TSoderoSOAPValue value[2];
+		} soap;
+		union {
+			struct {
 				TSoderoMySQLValue incoming, outgoing;
 			};
 			TSoderoMySQLValue value[2];

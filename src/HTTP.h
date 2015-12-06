@@ -47,6 +47,13 @@
 #define HTTP_OFFSET_CONTENT_LENGTH      15
 #define HTTP_OFFSET_CONTENT_ENCODING    16
 #define HTTP_OFFSET_TRANSFER_ENCODING   17
+#define HTTP_OFFSET_ACCEPT_ENCODING     14
+#define HTTP_OFFSET_SOAP_ACTION         18
+#define HTTP_OFFSET_SOAP_METHOD         19
+
+
+
+#define HTTP_SUB_PROTOCOL_SOAP           1
 
 
 
@@ -106,11 +113,25 @@ typedef struct SODERO_HTTP_VALUE {
 	unsigned int       x50;
 
 	TSoderoUnitDatum request,response,wait;
+	
 //	unsigned int       method;
 //	unsigned int       error;
 //	TSoderoHTTPDatum request, response;
 //	TSoderoUnitDatum duration;
 } TSoderoHTTPValue, * PSoderoHTTPValue;
+
+typedef struct SODERO_SOAP_VALUE {
+	TSoderoFlowDatum   value;
+	unsigned int       count;	//	method or error
+	unsigned int       action;	//	request or response
+	unsigned long long rttValue;
+	unsigned int       rttCount;
+	unsigned int       l2;
+	unsigned int       fault;
+
+	TSoderoUnitDatum request,response,wait;
+} TSoderoSOAPValue, * PSoderoSOAPValue;
+
 
 struct SODERO_APPLICATION_HTTP {
 	char *                 data;
@@ -157,7 +178,14 @@ struct SODERO_APPLICATION_HTTP {
 	char * req_cookies;
 	char * rsp_cookies;
 	char * transfer_encoding;
+	char * accept_encoding;
 	char * content_encoding;
+	char * soap_action;
+	char * soap_method;
+	char * soap_method_head;
+	char * soap_xmlns;
+	char * soap_fault_code;
+	char * soap_fault_string;
 
 	//	request
 	char * host;
@@ -197,7 +225,9 @@ struct SODERO_APPLICATION_HTTP {
 	long long rsp_fill;
 
 	unsigned char pipelined;	//	If the request is pipelined
+	unsigned char soap_fault;
 	int status;
+	int sub_protocol;
 };
 
 #pragma pack(pop)

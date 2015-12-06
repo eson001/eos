@@ -299,10 +299,18 @@ void freeApplicationHTTP(PSoderoApplicationHTTP application) {
 	freeTemp(application->rsp_content_type);
 	freeTemp(application->req_content_length);
 	freeTemp(application->rsp_content_length);
-//	freeTemp(application->req_cookies);
+	freeTemp(application->req_cookies);
 //	freeTemp(application->rsp_cookies);
 	freeTemp(application->transfer_encoding);
 	freeTemp(application->content_encoding);
+
+	//soap
+	freeTemp(application->soap_action);
+	freeTemp(application->soap_method);
+	freeTemp(application->soap_method_head);
+	freeTemp(application->soap_xmlns);
+	freeTemp(application->soap_fault_code);
+	freeTemp(application->soap_fault_string);
 
 	//	request
 	freeTemp(application->host);

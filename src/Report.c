@@ -1174,6 +1174,7 @@ int sodero_report_http_head(PSoderoApplicationHTTP value, int flag) {
 		SODERO_SAFE_TEXT(record, referer, value->referer);
 		SODERO_SAFE_TEXT(record, origin, value->origin);
 		SODERO_SAFE_TEXT(record, cookies, value->req_cookies);
+		SODERO_SAFE_TEXT(record, soap_action, value->soap_action);
 //		SODERO_SAFE_TEXT(record, req_sample, value->req_sample);
 
 		if (isExportApplication(owner->key.proto, owner->flag)) {
@@ -1224,6 +1225,10 @@ int sodero_report_http_body(PSoderoApplicationHTTP value, int flag) {
 		record->http_session_id = value->id;
 //		SODERO_SAFE_TEXT(record, title, value->title);
 		SODERO_SAFE_TEXT(record, content_type, value->rsp_content_type);
+		SODERO_SAFE_TEXT(record, soap_method, value->soap_method);
+		SODERO_SAFE_TEXT(record, soap_xmlns, value->soap_xmlns);
+		SODERO_SAFE_TEXT(record, soap_fault_code, value->soap_fault_code);
+		SODERO_SAFE_TEXT(record, soap_fault_string, value->soap_fault_string);
 
 //		record-> dns_time;
 #if 0
@@ -1657,6 +1662,31 @@ const char * SODERO_REPORT_IDENT_DNS_INCOMING_TIMEOUT = "dns.req_timeout";
 
 const char * SODERO_REPORT_IDENT_DNS_INCOMING_DURATION = "dns.rtt";
 
+
+const char * SODERO_REPORT_IDENT_SOAP_REQUEST_COUNT     = "soap.reqs" ;
+const char * SODERO_REPORT_IDENT_SOAP_REQUEST_BYTES     = "soap.req_bytes";
+const char * SODERO_REPORT_IDENT_SOAP_REQUEST_PKT_COUNT = "soap.req_pkts" ;
+const char * SODERO_REPORT_IDENT_SOAP_REQUEST_L2_BYTES  = "soap.req_l2_bytes";
+const char * SODERO_REPORT_IDENT_SOAP_RESPONSE_COUNT    = "soap.rsps" ;
+const char * SODERO_REPORT_IDENT_SOAP_RESPONSE_BYTES    = "soap.rsp_bytes";
+const char * SODERO_REPORT_IDENT_SOAP_RESPONSE_PKT_COUNT    = "soap.rsp_pkts" ;
+const char * SODERO_REPORT_IDENT_SOAP_RESPONSE_L2_BYTES = "soap.rsp_l2_bytes";
+const char * SODERO_REPORT_IDENT_SOAP_RESPONSE_FAULT = "soap.rsp_fault";
+
+const char * SODERO_REPORT_IDENT_SOAP_REQ_TIME_MIN = "soap.req_time.min";
+const char * SODERO_REPORT_IDENT_SOAP_REQ_TIME_MAX = "soap.req_time.max";
+const char * SODERO_REPORT_IDENT_SOAP_REQ_TIME_AVG = "soap.req_time.avg";
+
+const char * SODERO_REPORT_IDENT_SOAP_RES_TIME_MIN = "soap.res_time.min";
+const char * SODERO_REPORT_IDENT_SOAP_RES_TIME_MAX = "soap.res_time.max";
+const char * SODERO_REPORT_IDENT_SOAP_RES_TIME_AVG = "soap.res_time.avg";
+
+const char * SODERO_REPORT_IDENT_SOAP_WAIT_TIME_MIN = "soap.wait_time.min";
+const char * SODERO_REPORT_IDENT_SOAP_WAIT_TIME_MAX = "soap.wait_time.max";
+const char * SODERO_REPORT_IDENT_SOAP_WAIT_TIME_AVG = "soap.wait_time.avg";
+
+
+
 const char * sodero_ident_ipv4_count(int proto) {
 	switch(proto) {
 	case IPv4_TYPE_ICMP:
@@ -1874,6 +1904,36 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 		rttCount = v->l4.tns.incoming.rttCount + v->l4.tns.outgoing.rttCount;
 		if (rttCount)
 			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_ORACLE_RTT, rttValue / rttCount, metricCount);
+
+		
+		//	SOAP
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQUEST_COUNT , v->l4.soap.outgoing.action, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQUEST_BYTES , v->l4.soap.outgoing.value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQUEST_PKT_COUNT , v->l4.soap.outgoing.value.count, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQUEST_L2_BYTES , v->l4.soap.outgoing.l2, metricCount);
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RESPONSE_COUNT, v->l4.soap.incoming.action, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RESPONSE_BYTES, v->l4.soap.incoming.value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RESPONSE_PKT_COUNT , v->l4.soap.incoming.value.bytes, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RESPONSE_L2_BYTES , v->l4.soap.incoming.l2, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RESPONSE_FAULT, v->l4.soap.incoming.fault, metricCount);
+
+		//printf("------------------------------req time %llx, %llx, %llx, %llx\r\n", v->l4.http.outgoing.request.min, v->l4.http.outgoing.request.max, v->l4.http.outgoing.request.sum, v->l4.http.outgoing.request.count);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQ_TIME_MIN, v->l4.soap.outgoing.request.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQ_TIME_MAX , v->l4.soap.outgoing.request.max, metricCount);
+		if (v->l4.soap.outgoing.request.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_REQ_TIME_AVG , v->l4.soap.outgoing.request.sum / (v->l4.soap.outgoing.request.count), metricCount);
+
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_WAIT_TIME_MIN, v->l4.soap.outgoing.wait.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_WAIT_TIME_MAX , v->l4.soap.outgoing.wait.max, metricCount);
+		if (v->l4.soap.outgoing.wait.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_WAIT_TIME_AVG , v->l4.soap.outgoing.wait.sum / (v->l4.soap.outgoing.wait.count), metricCount);
+		
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RES_TIME_MIN, v->l4.soap.outgoing.response.min, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RES_TIME_MAX , v->l4.soap.outgoing.response.max, metricCount);
+		if (v->l4.soap.outgoing.response.count)
+			SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_SOAP_RES_TIME_AVG , v->l4.soap.outgoing.response.sum / (v->l4.soap.outgoing.response.count), metricCount);
 
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_REQUEST_COUNT  , v->l4.dns.incoming.request .value.count + v->l4.dns.outgoing.request .value.count, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_DNS_REQUEST_BYTES  , v->l4.dns.incoming.request .value.bytes + v->l4.dns.outgoing.request .value.bytes, metricCount);

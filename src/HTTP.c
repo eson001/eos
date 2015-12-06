@@ -482,6 +482,23 @@ int checkHTTPRequestField(PSoderoApplicationHTTP session, const unsigned char * 
 		return pickHTTPField(data, size, HTTP_OFFSET_HOST, &session->host);
 	}
 
+	if (major == 0x4954434150414F53ULL) {		//	SOAPACTION
+		unsigned long long minor = 0x000000000000DFDFULL & * (unsigned long long *)(data + 8);
+		if (minor == 0x0000000000004e4fULL) {	//	ON
+			return pickHTTPField(data, size, HTTP_OFFSET_SOAP_ACTION, &session->soap_action);
+			//if (session->soap_action)
+			//	printf("checkHTTPRequestField:741852963 = %llx\r\n", minor);
+			//return 0;
+		}
+	}
+
+	if (major == 0x4854454d50414F53ULL) {		//	soapmethodname
+		unsigned long long minor = 0x0000DFDFDFDFDFDFULL & * (unsigned long long *)(data + 8);
+		if (minor == 0x0000454d414e444fULL) {	//	odname
+			return pickHTTPField(data, size, HTTP_OFFSET_SOAP_METHOD, &session->soap_method);
+		}
+	}
+
 	if ((major & 0x0000FFFFFFFFFFFFULL) == 0x00004e494749524FULL) {		//	ORIGIN
 		return pickHTTPField(data, size, HTTP_OFFSET_ORIGIN, &session->origin);
 	}
@@ -590,6 +607,21 @@ void analyzeHTTPRequestHead(PSoderoApplicationHTTP application) {
 	if (application->method_code != HTTP_CMD_POST) {
 		application->req_step = HTTP_STEP_DONE;
 		return;
+	}
+
+	if ((application->method_code == HTTP_CMD_POST)
+		&& ((application->soap_action) 
+			|| (application->req_content_type && strncasecmp(application->req_content_type, "application/soap+xml", 20))
+			|| application->soap_method_head)
+		) {
+
+		application->sub_protocol = HTTP_SUB_PROTOCOL_SOAP;
+	}
+
+	if (application->soap_method_head) {
+		char *method = strstr(application->soap_method_head, "#");
+		
+		application->soap_method = method + 1;
 	}
 
 	if (application->req_content_length) {
@@ -730,6 +762,141 @@ int checkHTTPResponseHead(PSoderoApplicationHTTP application, PSoderoTCPValue va
 	return checkHTTPHead(application, DIR_RESPONSE, value, base, data, size, checkHTTPResposneField, analyzeHTTPResponseHead);
 }
 
+int decodeSOAPxmlns(const unsigned char *body, unsigned int len, char **xmlns)
+{
+	unsigned char *start, *end;
+
+	start = strstr(body, "xmlns");
+	if (!start)
+		return -1;
+
+	start += strlen("xmlns");
+	end = strstr(body, ">");
+	if (!end)
+		return -1;
+
+	if (start < end) {
+		replace_str(xmlns, (const char *) start + 1, end - start);
+		return 0;
+	}
+
+	return -1;
+}
+
+int decodeSOAPRequestbody(const unsigned char *body, unsigned int len, char **method)
+{
+	int i = 0, flag = 0;
+	unsigned char *start = NULL, *end = NULL;
+
+	for (i = 0; i < len; i++) {
+		if (body[i] == '<')
+			flag = 1;
+		if ((flag == 1) && (body[i] == ':'))
+			start = &body[i];
+		
+		if (start && ((body[i] == ' ') || (body[i] == '>'))) {
+			end = &body[i];
+			break;
+		}
+	}
+
+	if (method && start && end) {
+		replace_str(method, (const char *) start + 1, end - start - 1);
+		return 0;
+	}
+
+	return -1;
+}
+
+int decodeSOAPResponsebody(const unsigned char *body, unsigned int len, 
+	char **fault_code, char **fault_string)
+{
+	int i = 0, flag;
+	unsigned char *fault = NULL, *code = NULL, *string = NULL;
+	
+	fault = strstr(body, "<SOAP-ENV:Fault");
+	if (!fault) {
+		return -1;
+	}
+
+	fault += strlen("<SOAP-ENV:Fault");
+	code = strstr(fault, "<faultcode>");
+	if (!code) {
+		return -1;
+	}
+
+	code += strlen("<faultcode>");
+	fault = strstr(code, "</faultcode>");
+	if (!fault) {
+		return -1;
+	}
+
+	replace_str(fault_code, (const char *) code, fault - code);
+
+	fault += strlen("<faultcode>");
+	string = strstr(fault, "<faultstring>");
+	if (!code) {
+		return -1;
+	}
+
+	string += strlen("<faultstring>");
+	fault = strstr(string, "</faultstring>");
+	if (!fault) {
+		return -1;
+	}
+
+	replace_str(fault_string, (const char *) string, fault - string);
+	return 0;
+}
+
+
+int decodeSOAPRequest(PSoderoApplicationHTTP application, PSoderoTCPValue value,
+		int base, const unsigned char * data, int size)
+{
+	unsigned char *body = data;
+	unsigned char *envelope;
+	char *method;
+	
+	//is xml
+	if (!strstr(body, "<?xml")) {
+		return -1;
+	}
+
+	//find <SOAP-ENV:Envelope
+	envelope = strstr(body, "<SOAP-ENV:Envelope");
+	if (envelope) {
+		application->sub_protocol = HTTP_SUB_PROTOCOL_SOAP;
+		envelope += strlen("<SOAP-ENV:Envelope");
+		decodeSOAPxmlns(envelope, size - ((int)envelope - (int)body), 
+			&application->soap_xmlns);
+	} 
+
+	if (application->soap_method || !envelope)
+		return 0;
+
+	envelope = strstr(envelope, "<SOAP-ENV:Body");
+	if (envelope) {
+		envelope += strlen("<SOAP-ENV:Body");
+		decodeSOAPRequestbody(envelope, size - ((int)envelope - (int)body), &application->soap_method);
+		return 0;
+	}
+
+	return -1;
+}
+
+int decodeSOAPResponse(PSoderoApplicationHTTP application, PSoderoTCPValue value,
+		int base, const unsigned char * data, int size)
+{
+	unsigned char *envelope;
+
+	envelope = strstr(data, "<SOAP-ENV:Body");
+	if (envelope) {
+		return decodeSOAPResponsebody(envelope, size, &application->soap_fault_code, 
+			&application->soap_fault_string);
+	}
+
+	return -1;
+}
 
 int checkHTTPRequestBody(PSoderoApplicationHTTP application, PSoderoTCPValue value,
 		int base, const unsigned char * data, int size) {
@@ -738,6 +905,8 @@ int checkHTTPRequestBody(PSoderoApplicationHTTP application, PSoderoTCPValue val
 		application->req_step = HTTP_STEP_DONE;
 		return 0;
 	}
+	
+	decodeSOAPRequest(application, value, base, data, size);
 
 	int byte = gate - base;		//	Byte to be processed
 
@@ -843,6 +1012,14 @@ int checkHTTPResponseBody(PSoderoApplicationHTTP application, PSoderoTCPValue va
 			application->rsp_step = HTTP_STEP_DONE;
 			return left;
 		}
+	}
+
+	if (application->sub_protocol == HTTP_SUB_PROTOCOL_SOAP) {  //like soap , check more information
+		decodeSOAPResponse(application, value, base, data, size);
+		//find soap response 
+		//if find soap response
+		// find error and more 
+		// set flag for appliaction, like this :application->sub_protocol = 1;
 	}
 
 	if (application->rsp_chunked) {
@@ -1066,6 +1243,8 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 	while (application) {
 		if (isDoneHTTPSession(application)) {
 			PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, ip->sIP);
+			PNodeValue destNode = takeIPv4Node((TMACVlan){{ether->dest, ether->vlan}}, ip->dIP);
+			
 			application->rsp_e = gTime;
 			//printf("updateHTTPState:: rsp_e %llx, %llx, %llx\r\n", gTime, application->req_e,application->req_b);
 			if (application->rsp_b)
@@ -1077,6 +1256,28 @@ int processHTTPPacket(PSoderoTCPSession session, int dir, PSoderoTCPValue value,
 				processEE(&sourNode->l4.http.outgoing.wait, &(application->wait));
 				processEE(&sourNode->l4.http.outgoing.response, &(application->response));
 			}
+
+			if (application->sub_protocol == HTTP_SUB_PROTOCOL_SOAP) {
+				if (sourNode) {
+					sourNode->l4.soap.outgoing.action += application->req_pkts; //reqs
+					sourNode->l4.soap.outgoing.value.bytes = application->req_bytes; //bytes
+					sourNode->l4.soap.outgoing.value.count = application->req_pkts;  //packets
+					sourNode->l4.soap.outgoing.l2 += application->req_l2_bytes;
+
+					processEE(&sourNode->l4.soap.outgoing.request, &(application->request));
+					processEE(&sourNode->l4.soap.outgoing.wait, &(application->wait));
+					processEE(&sourNode->l4.soap.outgoing.response, &(application->response));
+				}
+
+				if (destNode) {
+					destNode->l4.soap.incoming.action += application->rsp_pkts; //rsqs
+					destNode->l4.soap.incoming.value.bytes = application->rsp_bytes; //bytes
+					destNode->l4.soap.incoming.value.count = application->rsp_pkts;  //packets
+					destNode->l4.soap.incoming.l2 += application->rsp_l2_bytes;
+					destNode->l4.soap.incoming.fault += application->soap_fault;
+				}
+			}
+			
 			PSoderoApplicationHTTP next = application->link;
 			application->link = nullptr;
 			sodero_pointer_add(getClosedApplications(), application);
