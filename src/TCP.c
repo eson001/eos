@@ -373,8 +373,10 @@ void counterTCPNode(PSoderoTCPSession session, PPortKey key, PEtherHeader ether,
 	if (isExportVerbose())
 		printf("TCP Connect @ %p & %p\n", sourNode, destNode);
 
-	if (sourNode) sourNode->counter.tcp.outgoing.connectedCount++;
-	if (destNode) destNode->counter.tcp.incoming.connectedCount++;
+	if (session->state == SODERO_TCP_CLOSED) {
+		if (sourNode) sourNode->counter.tcp.outgoing.connectedCount++;
+		if (destNode) destNode->counter.tcp.incoming.connectedCount++;
+	}
 }
 
 int isSessionHandshaked(PSoderoTCPSession session, PPortKey key, unsigned int ack) {
