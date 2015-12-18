@@ -210,6 +210,22 @@ bool_t xdr_TSoderoHTTPSessionHead(XDR *xdrs, TSoderoHTTPSessionHead *objp) {
 		return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->flow_session_id))
 		return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
+        return FALSE;
 	if (!xdr_vector(xdrs, (char *) objp->method, 12, sizeof(u_char),
 			(xdrproc_t) xdr_u_char))
 		return FALSE;
@@ -350,6 +366,22 @@ bool_t xdr_TSoderoDNSMsg(XDR *xdrs, TSoderoDNSSessionMsg *objp) {
 		return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->flow_session_id))
 		return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
+        return FALSE;
 	if (!xdr_array(xdrs, (char **) &objp->qname.qname_val,
 			(u_int *) &objp->qname.qname_len, ~0, sizeof(u_char),
 			(xdrproc_t) xdr_u_char))
@@ -462,6 +494,22 @@ bool_t xdr_TSoderoMySQLLoginMsg(XDR * xdrs, TSoderoMySQLLoginMsg * objp) {
 		return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->application_id))
 		return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
+        return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->reqTime))
 		return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->rspTime))
@@ -484,6 +532,22 @@ bool_t xdr_TSoderoMySQLCommandMsg(XDR * xdrs, TSoderoMySQLCommandMsg * objp) {
 		return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->application_id))
 		return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
+        return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->reqFirst))
 		return FALSE;
 	if (!xdr_u_int64_t(xdrs, &objp->reqLast ))
@@ -743,6 +807,22 @@ bool_t xdr_TSoderoOracleMsg(XDR *xdrs, TSoderoOracleMsg *objp) {
     if (!xdr_u_int64_t(xdrs, &objp->session_id))
         return FALSE;
     if (!xdr_u_int64_t(xdrs, &objp->flow_id))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
         return FALSE;
     if (!xdr_TSoderoOracleMethod(xdrs, &objp->method))
         return FALSE;

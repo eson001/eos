@@ -140,6 +140,12 @@ typedef struct TSoderoFLOWSessionBody TSoderoFLOWSessionBody;
 struct TSoderoHTTPSessionHead {
 	u_int64_t http_session_id;
 	u_int64_t flow_session_id;
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
 	u_char method[12];
 	struct {
 		u_int url_len;
@@ -254,6 +260,12 @@ typedef struct TSoderoDNSAnswer TSoderoDNSAnswer;
 struct TSoderoDNSMsg {
 	u_int64_t dns_session_id;
 	u_int64_t flow_session_id;
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
 	struct {
 		u_int qname_len;
 		u_char *qname_val;
@@ -333,6 +345,12 @@ typedef enum TSoderoMySQLType TSoderoMySQLType;
 struct TSoderoMySQLLoginMsg {
 	u_int64_t session_id;
 	u_int64_t application_id;
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
 	u_int64_t reqTime;
 	u_int64_t rspTime;
 	struct {
@@ -350,6 +368,12 @@ typedef struct TSoderoMySQLLoginMsg TSoderoMySQLLoginMsg;
 struct TSoderoMySQLCommandMsg {
 	u_int64_t session_id;
 	u_int64_t application_id;
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
 	u_int64_t reqFirst;
 	u_int64_t reqLast ;
 	u_int  reqCount;		//	Block count
@@ -415,6 +439,12 @@ typedef struct TSoderoTnsCommandMsg TSoderoTnsCommandMsg;
 struct TSoderoOracleMsg {
 	u_int64_t session_id;	//	Oracle 的会话ID
 	u_int64_t flow_id;	//	对应的TCP连接的flow id
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
 	TSoderoOracleMethod method;	//	登陆或者SQL活着Proc存储过程
 	struct {
 		u_int user_len;

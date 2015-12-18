@@ -747,6 +747,14 @@ int sodero_report_dns_application(PSoderoApplicationDNS value, int flag) {
 
 		record->dns_session_id  = value->id;
 		record->flow_session_id = owner->id;
+        
+        memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+        memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+        memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+        memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+        record->client_port = value->owner->key.sourPort;
+        record->server_port = value->owner->key.destPort;
+        
 
 		if (value->b) {
 			if (value->e) {
@@ -981,6 +989,12 @@ int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag) {
 			TSoderoMySQLLoginMsg * record = & content->TSoderoTCPSessionContent_u.mysql.login;
 			record->session_id = owner->id;
 			record->application_id = value->id;
+            memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+            memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+            memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+            memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+            record->client_port = value->owner->key.sourPort;
+            record->server_port = value->owner->key.destPort;
 			record->reqTime = value->reqTime;
 			record->rspTime = value->rspTime;
 			SODERO_SAFE_TEXT(record, user, value->user);
@@ -1001,6 +1015,12 @@ int sodero_report_mysql_application(PSoderoMySQLApplication value, int flag) {
 			TSoderoMySQLCommandMsg * record = & content->TSoderoTCPSessionContent_u.mysql.command;
 			record->session_id = owner->id;
 			record->application_id = value->id;
+            memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+            memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+            memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+            memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+            record->client_port = value->owner->key.sourPort;
+            record->server_port = value->owner->key.destPort;
 			record->reqFirst = value->reqFirst;
 			record->reqLast = value->reqLast;
 			record->reqCount = value->traffic.outgoing.count;
@@ -1054,6 +1074,13 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
 					record->session_id = owner->id;
 					record->flow_id = value->id;
+                    memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+                    memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+                    memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+                    memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+                    record->client_port = value->owner->key.sourPort;
+                    record->server_port = value->owner->key.destPort;
+            
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
 					record->wait_time = value->rspFirst - value->reqFirst;
@@ -1075,6 +1102,13 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
 					record->session_id = owner->id;
 					record->flow_id = value->id;
+                    memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+                    memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+                    memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+                    memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+                    record->client_port = value->owner->key.sourPort;
+                    record->server_port = value->owner->key.destPort;
+                    
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
 					record->wait_time = value->rspFirst - value->reqFirst;
@@ -1105,6 +1139,13 @@ int sodero_report_oracle_application(PSoderoTnsApplication value, int flag) {
 					TSoderoOracleMsg * record = & content->TSoderoTCPSessionContent_u.tns.oracle_msg;
 					record->session_id = owner->id;
 					record->flow_id = value->id;
+                    memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+                    memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+                    memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+                    memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+                    record->client_port = value->owner->key.sourPort;
+                    record->server_port = value->owner->key.destPort;
+                    
 					record->req_time = value->reqLast -  value->reqFirst;
 					record->rsp_time = value->rspLast - value->rspFirst;
 					record->wait_time = value->rspFirst - value->reqFirst;
@@ -1165,6 +1206,14 @@ int sodero_report_http_head(PSoderoApplicationHTTP value, int flag) {
 		TSoderoHTTPSessionHead * record = &content->TSoderoTCPSessionContent_u.http_head;
 		record->http_session_id = value->id;
 		record->flow_session_id = value->owner->id;
+        
+        memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+        memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+        memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+        memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+        record->client_port = value->owner->key.sourPort;
+        record->server_port = value->owner->key.destPort;
+        
 
 		snprintf((char*)record->method, sizeof(record->method) - 1, "%s", nameOfHTTPMethod(value->method_code));
 
@@ -2353,8 +2402,11 @@ int sodero_write_message(char * buffer)
 	memcpy(&(pMsg->report_msg[pMsg->head]), buffer, XDR_BUFFER_SIZE);
 	pMsg->head = (pMsg->head + 1) % MSG_NUM;
 	pMsg->write_count++;
-	/*printf("head=%u, tail=%u, write=%llu, read=%llu.\n", 
-		pMsg->head, pMsg->tail, pMsg->write_count, pMsg->read_count);*/
+    
+    if (pMsg->write_count % 10000 == 0) {
+        printf("head=%u, tail=%u, write=%llu, read=%llu.\n",
+               pMsg->head, pMsg->tail, pMsg->write_count, pMsg->read_count);
+    }
 
 	return TRUE;
 }
