@@ -1612,6 +1612,7 @@ const char * SODERO_REPORT_IDENT_SCTP_BYTES = "";	//	"sctp.packet.bytes";
 
 const char * SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT = "tcp.connected";
 const char * SODERO_REPORT_IDENT_TCP_CLOSED_COUNT    = "tcp.closed"   ;
+const char * SODERO_REPORT_IDENT_TCP_RESET_COUNT     = "tcp.reset";
 
 const char * SODERO_REPORT_IDENT_TCP_OUTGOING_COUNT  = "tcp.req_pkts" ;
 const char * SODERO_REPORT_IDENT_TCP_OUTGOING_BYTES  = "tcp.req_bytes";
@@ -1853,6 +1854,7 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 				v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT, v->counter.tcp.outgoing.connectedCount   + v->counter.tcp.incoming.connectedCount  , metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CLOSED_COUNT   , v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_RESET_COUNT   , v->counter.tcp.outgoing.rstCount, metricCount);
 
 		//	L7
 		//	HTTP

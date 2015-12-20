@@ -160,7 +160,7 @@ int processVLANPacket(const void * data, int size, int length, PEtherHeader ethe
 
 	processA(&result->protocol.l2.vlan.total, size);
 
-	long id = VLAN_ID(packet->vlan.value);
+	long id = VLAN_ID(packet->vlan.value) >> 8;
 	PSoderoSingleDatum datum = (PSoderoSingleDatum) sodero_map_ensure(getPeriodResult()->items.vlan, &id);
 	processSD(datum, size);
 

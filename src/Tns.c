@@ -981,7 +981,7 @@ int parseTnsData(struct cursor *cursor, PSoderoTnsPacketDetail detail, PSoderoTC
 		        } 
             }
 
-			if (strstr(application, "PROCEDURE"))
+			if (memmem(cursor->head, cursor->cap_len, "PROCEDURE", strlen("PROCEDURE")))
 				application->command = TNS_METHOD_PROCEDURE;
 			
         }
