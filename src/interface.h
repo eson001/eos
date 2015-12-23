@@ -93,6 +93,7 @@ typedef struct TSoderoFLOWSessionHead TSoderoFLOWSessionHead;
 
 struct TSoderoFLOWSessionBody {
 	u_int64_t flow_sessin_id;
+	TSoderoL3Type l3_type;    
 	u_char flag;
 	u_char app;
 	u_short major;

@@ -598,6 +598,8 @@ int sodero_report_flow_body(PSoderoPortSession value, int flag) {
 //				value->key.d[0], value->key.d[1], value->key.d[2], value->key.d[3], ntohs(value->key.destPort));
 
 		TSoderoFLOWSessionBody * record = &content->TSoderoTCPSessionContent_u.flow_body;
+        
+		record->l3_type = value->key.proto;
 
 		record->flow_sessin_id = value->id;
 		record->client_bytes = value->traffic.outgoing.bytes;

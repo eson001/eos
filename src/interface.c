@@ -120,6 +120,8 @@ bool_t xdr_TSoderoFLOWSessionHead(XDR *xdrs, TSoderoFLOWSessionHead *objp) {
 bool_t xdr_TSoderoFLOWSessionBody(XDR *xdrs, TSoderoFLOWSessionBody *objp) {
 	if (!xdr_u_int64_t(xdrs, &objp->flow_sessin_id))
 		return FALSE;
+    if (!xdr_TSoderoL3Type(xdrs, &objp->l3_type))
+        return FALSE;
 	if (!xdr_u_char(xdrs, &objp->expired))
 		return FALSE;
 	if (!xdr_u_char(xdrs, &objp->app))
