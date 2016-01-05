@@ -389,6 +389,9 @@ int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
 		}
 		else
 		{
+            if (message->type == SESSION_EVENT) {
+                printf("**********************************************\n");
+            }
 			return write2socket(fd, buffer, length, IPPROTO_TCP);
 		}
 	}
