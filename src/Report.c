@@ -383,7 +383,7 @@ int sodero_xdr_tcp_message(int * fd, TSoderoTCPReportMsg * message) {
 	if (xdr_TSoderoTCPReportMsg(&xdr, message)) {
 		int length = xdr_getpos(&xdr);
 		gTCPBytes += length;
-		if (message->type == SESSION_EVENT)
+		if (message->type == SESSION_EVENT && !gTCPSession)
 		{
 			return sodero_write_message(buffer);
 		}

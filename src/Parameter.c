@@ -16,6 +16,7 @@
 #include "Common.h"
 #include "Parameter.h"
 
+int gTCPSession = false;
 int gExport = SODERO_EXPORT_NONE;
 int gAlign = false;
 
@@ -65,6 +66,7 @@ struct option longopts[] = {
 		{ "service"  , required_argument, NULL, 'v'},
 		{ "dump"     , required_argument, NULL, 'e'},
 		{ "sslol"	 , required_argument, NULL, 'x'},
+		{ "tcpsession" , required_argument, NULL, 'o'},
 	};
 
 void usege(void) {
@@ -89,7 +91,8 @@ void usege(void) {
 	printf("                 [Err:0, Wrnn:1, Info:2, Dbg:3]\n");
 	printf("-e --dump        dump level\n");
 	printf("                 [verbose|detail|report]\n");
-	printf("-x --httpsconf   https offload config file\n");	
+	printf("-x --httpsconf   https offload config file\n");
+	printf("-o --tcpsession  use tcp to send session data\n");
 	exit(0);
 }
 
@@ -198,7 +201,10 @@ void initArguments(int argc, char** argv) {
 			break;
 		case 'x':
 			gSslolConf = optarg;
-			break;			
+			break;
+        case 'o':
+            gTCPSession = true;
+            break;
 		default:
 			usege();
 		}

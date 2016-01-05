@@ -42,6 +42,8 @@ extern int gCapturePromisc;
 extern int gCaptureTimeout;
 extern int gCaptureBuffer ;
 
+extern int gTCPSession;
+
 extern long long gPeriod;
 
 extern const char * gDebug  ;
