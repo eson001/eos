@@ -66,7 +66,7 @@ struct option longopts[] = {
 		{ "service"  , required_argument, NULL, 'v'},
 		{ "dump"     , required_argument, NULL, 'e'},
 		{ "sslol"	 , required_argument, NULL, 'x'},
-		{ "tcpsession" , required_argument, NULL, 'o'},
+		{ "tcpsession" , no_argument, NULL, 'o'},
 	};
 
 void usege(void) {
