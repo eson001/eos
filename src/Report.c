@@ -750,6 +750,8 @@ int sodero_report_dns_application(PSoderoApplicationDNS value, int flag) {
 		record->dns_session_id  = value->id;
 		record->flow_session_id = owner->id;
         
+        printf("********************************* DNS source ip address = %d, dest ip address = %d\n", owner->key.sourIP, owner->key.destIP);
+        
         memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
         memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
         memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
