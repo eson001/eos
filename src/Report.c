@@ -1225,7 +1225,7 @@ int sodero_report_http_head(PSoderoApplicationHTTP value, int flag) {
 		SODERO_SAFE_TEXT(record, referer, value->referer);
 		SODERO_SAFE_TEXT(record, origin, value->origin);
 		SODERO_SAFE_TEXT(record, cookies, value->req_cookies);
-		SODERO_SAFE_TEXT(record, soap_action, value->soap_action);
+		SODERO_SAFE_TEXT(record, soap_action, value->soap_method);
 //		SODERO_SAFE_TEXT(record, req_sample, value->req_sample);
 
 		if (isExportApplication(owner->key.proto, owner->flag)) {
@@ -1616,6 +1616,15 @@ const char * SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT = "tcp.connected";
 const char * SODERO_REPORT_IDENT_TCP_CLOSED_COUNT    = "tcp.closed"   ;
 const char * SODERO_REPORT_IDENT_TCP_RESET_COUNT     = "tcp.reset";
 
+const char * SODERO_REPORT_IDENT_TCP_DROPED_COUNT    = "tcp.droped_count";
+const char * SODERO_REPORT_IDENT_TCP_DROPED_BYTES    = "tcp.droped_bytes";
+
+const char * SODERO_REPORT_IDENT_TCP_REORDERED_COUNT = "tcp.reordered_count";
+const char * SODERO_REPORT_IDENT_TCP_REORDERED_BYTES = "tcp.reordered_bytes";
+
+const char * SODERO_REPORT_IDENT_TCP_RETRANSMIT_COUNT = "tcp.retransmit_count";
+const char * SODERO_REPORT_IDENT_TCP_RETRANSMIT_BYTES = "tcp.retransmit_bytes";
+
 const char * SODERO_REPORT_IDENT_TCP_OUTGOING_COUNT  = "tcp.req_pkts" ;
 const char * SODERO_REPORT_IDENT_TCP_OUTGOING_BYTES  = "tcp.req_bytes";
 const char * SODERO_REPORT_IDENT_TCP_INCOMING_COUNT  = "tcp.rsp_pkts" ;
@@ -1857,6 +1866,15 @@ long map_node_report_handlor(PSoderoMap container, int index, PNodeIndex k, PNod
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CONNECTED_COUNT, v->counter.tcp.outgoing.connectedCount   + v->counter.tcp.incoming.connectedCount  , metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_CLOSED_COUNT   , v->counter.tcp.outgoing.disconectedCount + v->counter.tcp.incoming.disconectedCount, metricCount);
 		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_RESET_COUNT   , v->counter.tcp.outgoing.rstCount, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_DROPED_COUNT   , v->counter.tcp.outgoing.dropCount + v->counter.tcp.incoming.dropCount, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_DROPED_BYTES   , v->counter.tcp.outgoing.dropBytes + v->counter.tcp.incoming.dropBytes, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_REORDERED_COUNT   , v->counter.tcp.outgoing.reorderedCount + v->counter.tcp.incoming.reorderedCount, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_REORDERED_BYTES   , v->counter.tcp.outgoing.reorderedBytes + v->counter.tcp.incoming.reorderedBytes, metricCount);
+
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_RETRANSMIT_COUNT   , v->counter.tcp.outgoing.retransmitCount + v->counter.tcp.incoming.retransmitCount, metricCount);
+		SODERO_REPORT_VALUE(k, SODERO_REPORT_IDENT_TCP_RETRANSMIT_BYTES   , v->counter.tcp.outgoing.retransmitBytes + v->counter.tcp.incoming.retransmitBytes, metricCount);
 
 		//	L7
 		//	HTTP

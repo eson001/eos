@@ -611,7 +611,7 @@ void analyzeHTTPRequestHead(PSoderoApplicationHTTP application) {
 
 	if ((application->method_code == HTTP_CMD_POST)
 		&& ((application->soap_action) 
-			|| (application->req_content_type && strncasecmp(application->req_content_type, "application/soap+xml", 20))
+			|| (application->req_content_type && strstr(application->req_content_type, "xml"))
 			|| application->soap_method_head)
 		) {
 
@@ -789,10 +789,10 @@ int decodeSOAPRequestbody(const unsigned char *body, unsigned int len, char **me
 	unsigned char *start = NULL, *end = NULL;
 
 	for (i = 0; i < len; i++) {
-		if (body[i] == '<')
+		if (body[i] == '<') {
 			flag = 1;
-		if ((flag == 1) && (body[i] == ':'))
 			start = &body[i];
+		}
 		
 		if (start && ((body[i] == ' ') || (body[i] == '>'))) {
 			end = &body[i];
@@ -813,13 +813,15 @@ int decodeSOAPResponsebody(const unsigned char *body, unsigned int len,
 {
 	int i = 0, flag;
 	unsigned char *fault = NULL, *code = NULL, *string = NULL;
+	unsigned char *fault1 = NULL;
 	
 	fault = strstr(body, "<SOAP-ENV:Fault");
-	if (!fault) {
+	fault1 = strstr(body, "<soap:Fault");
+	if (!fault && !fault1) {
 		return -1;
 	}
 
-	fault += strlen("<SOAP-ENV:Fault");
+	//fault += strlen("<SOAP-ENV:Fault");
 	code = strstr(fault, "<faultcode>");
 	if (!code) {
 		return -1;
@@ -855,6 +857,8 @@ int decodeSOAPRequest(PSoderoApplicationHTTP application, PSoderoTCPValue value,
 {
 	unsigned char *body = data;
 	unsigned char *envelope;
+	unsigned char *soap;
+	unsigned char *soap1;
 	char *method;
 	
 	//is xml
@@ -862,11 +866,17 @@ int decodeSOAPRequest(PSoderoApplicationHTTP application, PSoderoTCPValue value,
 		return -1;
 	}
 
+	//find soap 
+	soap = strstr(body, "<SOAP");
+	soap1 = strstr(body, "<soap");
+	if (!soap && !soap1) {
+		return -1;
+	}
 	//find <SOAP-ENV:Envelope
-	envelope = strstr(body, "<SOAP-ENV:Envelope");
+	envelope = strstr(body, ":Envelope");
 	if (envelope) {
 		application->sub_protocol = HTTP_SUB_PROTOCOL_SOAP;
-		envelope += strlen("<SOAP-ENV:Envelope");
+		envelope += strlen(":Envelope");
 		decodeSOAPxmlns(envelope, size - ((int)envelope - (int)body), 
 			&application->soap_xmlns);
 	} 
@@ -874,9 +884,10 @@ int decodeSOAPRequest(PSoderoApplicationHTTP application, PSoderoTCPValue value,
 	if (application->soap_method || !envelope)
 		return 0;
 
-	envelope = strstr(envelope, "<SOAP-ENV:Body");
+	envelope = strstr(envelope, ":Body");
+	//printf("Body:::envelope = %s\r\n", envelope);
 	if (envelope) {
-		envelope += strlen("<SOAP-ENV:Body");
+		envelope += strlen(":Body");
 		decodeSOAPRequestbody(envelope, size - ((int)envelope - (int)body), &application->soap_method);
 		return 0;
 	}
@@ -888,8 +899,16 @@ int decodeSOAPResponse(PSoderoApplicationHTTP application, PSoderoTCPValue value
 		int base, const unsigned char * data, int size)
 {
 	unsigned char *envelope;
+	unsigned char *soap;
+	unsigned char *soap1;
 
-	envelope = strstr(data, "<SOAP-ENV:Body");
+	soap = strstr(data, "<SOAP");
+	soap1 = strstr(data, "<soap");
+	if (!soap && !soap1) {
+		return -1;
+	}
+	
+	envelope = strstr(data, ":Body");
 	if (envelope) {
 		return decodeSOAPResponsebody(envelope, size, &application->soap_fault_code, 
 			&application->soap_fault_string);

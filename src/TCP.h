@@ -95,6 +95,10 @@ typedef	struct SODERO_TCP_COUNTER {
 	unsigned int ackRetransmit   ;
 	unsigned int dropCount       ;	//	Number of dropped packet (NULL session)
 	unsigned int dropBytes       ;	//	Traffic of dropped packet (NULL session)
+	unsigned int reorderedCount;
+	unsigned int reorderedBytes;
+	unsigned int retransmitCount;
+	unsigned int retransmitBytes;
 
 	unsigned int activeCount     ;	//	Number of activity (sending or receiving packets) connections
 	unsigned int establishedCount;	//  Number of connections

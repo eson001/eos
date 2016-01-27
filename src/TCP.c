@@ -370,6 +370,38 @@ void counterTCPNode(PSoderoTCPSession session, PPortKey key, PEtherHeader ether,
 	PNodeValue sourNode = takeIPv4Node((TMACVlan){{ether->sour, ether->vlan}}, key->sIP);
 	PNodeValue destNode = takeIPv4Node((TMACVlan){{ether->dest, ether->vlan}}, key->dIP);
 
+	if (sourNode) {
+		sourNode->counter.tcp.outgoing.dropCount = session->value.outgoing.droppedCount;
+		sourNode->counter.tcp.outgoing.dropBytes = session->value.outgoing.droppedBytes;
+		sourNode->counter.tcp.outgoing.reorderedCount = session->value.outgoing.reorderedCount;
+		sourNode->counter.tcp.outgoing.reorderedBytes = session->value.outgoing.reorderedBytes;
+		sourNode->counter.tcp.outgoing.retransmitCount = session->value.outgoing.retransmitCount;
+		sourNode->counter.tcp.outgoing.retransmitBytes = session->value.outgoing.retransmitBytes;
+
+		sourNode->counter.tcp.incoming.dropCount = session->value.incoming.droppedCount;
+		sourNode->counter.tcp.incoming.dropBytes = session->value.incoming.droppedBytes;
+		sourNode->counter.tcp.incoming.reorderedCount = session->value.incoming.reorderedCount;
+		sourNode->counter.tcp.incoming.reorderedBytes = session->value.incoming.reorderedBytes;
+		sourNode->counter.tcp.incoming.retransmitCount = session->value.incoming.retransmitCount;
+		sourNode->counter.tcp.incoming.retransmitBytes = session->value.incoming.retransmitBytes;
+	}
+
+	if (destNode) {
+		destNode->counter.tcp.outgoing.dropCount = session->value.incoming.droppedCount;
+		destNode->counter.tcp.outgoing.dropBytes = session->value.incoming.droppedBytes;
+		destNode->counter.tcp.outgoing.reorderedCount = session->value.incoming.reorderedCount;
+		destNode->counter.tcp.outgoing.reorderedBytes = session->value.incoming.reorderedBytes;
+		destNode->counter.tcp.outgoing.retransmitCount = session->value.incoming.retransmitCount;
+		destNode->counter.tcp.outgoing.retransmitBytes = session->value.incoming.retransmitBytes;
+
+		destNode->counter.tcp.incoming.dropCount = session->value.outgoing.droppedCount;
+		destNode->counter.tcp.incoming.dropBytes = session->value.outgoing.droppedBytes;
+		destNode->counter.tcp.incoming.reorderedCount = session->value.outgoing.reorderedCount;
+		destNode->counter.tcp.incoming.reorderedBytes = session->value.outgoing.reorderedBytes;
+		destNode->counter.tcp.incoming.retransmitCount = session->value.outgoing.retransmitCount;
+		destNode->counter.tcp.incoming.retransmitBytes = session->value.outgoing.retransmitBytes;
+	}
+
 	if (isExportVerbose())
 		printf("TCP Connect @ %p & %p\n", sourNode, destNode);
 
