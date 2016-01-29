@@ -120,7 +120,33 @@ bool_t xdr_TSoderoFLOWSessionHead(XDR *xdrs, TSoderoFLOWSessionHead *objp) {
 bool_t xdr_TSoderoFLOWSessionBody(XDR *xdrs, TSoderoFLOWSessionBody *objp) {
 	if (!xdr_u_int64_t(xdrs, &objp->flow_sessin_id))
 		return FALSE;
+    if (!xdr_u_int32_t(xdrs, &objp->age))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
+        return FALSE;
+    if (!xdr_u_int32_t(xdrs, &objp->identify))
+        return FALSE;
+    if (!xdr_TSoderoL2Type(xdrs, &objp->l2_type))
+        return FALSE;
     if (!xdr_TSoderoL3Type(xdrs, &objp->l3_type))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->vlan))
+        return FALSE;
+    if (!xdr_u_int32_t(xdrs, &objp->connect_time))
         return FALSE;
 	if (!xdr_u_char(xdrs, &objp->expired))
 		return FALSE;
@@ -269,6 +295,61 @@ bool_t xdr_TSoderoHTTPSessionHead(XDR *xdrs, TSoderoHTTPSessionHead *objp) {
 bool_t xdr_TSoderoHTTPSessionBody(XDR *xdrs, TSoderoHTTPSessionBody *objp) {
 	if (!xdr_u_int64_t(xdrs, &objp->http_session_id))
 		return FALSE;
+    if (!xdr_u_int64_t(xdrs, &objp->flow_session_id))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->client_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->client_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_mac, 6, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->server_ip, 16, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_u_short(xdrs, &objp->server_port))
+        return FALSE;
+    if (!xdr_vector(xdrs, (char *) objp->method, 12, sizeof(u_char),
+                    (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->url.url_val,
+                   (u_int *) &objp->url.url_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->host.host_val,
+                   (u_int *) &objp->host.host_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->user_agent.user_agent_val,
+                   (u_int *) &objp->user_agent.user_agent_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->referer.referer_val,
+                   (u_int *) &objp->referer.referer_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->origin.origin_val,
+                   (u_int *) &objp->origin.origin_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->cookies.cookies_val,
+                   (u_int *) &objp->cookies.cookies_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->req_sample.req_sample_val,
+                   (u_int *) &objp->req_sample.req_sample_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+    if (!xdr_array(xdrs, (char **) &objp->soap_action.soap_action_val,
+                   (u_int *) &objp->soap_action.soap_action_len, ~0, sizeof(u_char),
+                   (xdrproc_t) xdr_u_char))
+        return FALSE;
+
+    
 	if (!xdr_array(xdrs, (char **) &objp->title.title_val,
 			(u_int *) &objp->title.title_len, ~0, sizeof(u_char),
 			(xdrproc_t) xdr_u_char))
