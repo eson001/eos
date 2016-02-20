@@ -647,6 +647,9 @@ void debug(int argc, char * argv[]) {
                     2.Session---[Session:ID|Session type|Event type|SourIP:SourPort->DstIP:DstPort|ReqBytes|RspBytes]\n\
                     3.Event---event info");
                     
+	dpiInitModule();
+	loadDPIEntries("app.tsv", DPI_ENTRIES_RELOAD);
+	
 	enum_interfaces();
 #ifdef __EXPORT_STATISTICS__
 	gDump = fopen("memory.log", "w");

@@ -190,7 +190,11 @@ void newPortSession(PSoderoPortSession session, PPortKey key, int timeout, unsig
 
 	if (dpiValid())
 		do {
-			if (portSessionDPI(session, (TDPIKey){{key->sourIP, key->sourPort, key->proto, 0}})) break;
+			if (portSessionDPI(session, (TDPIKey){{key->sourIP, key->sourPort, key->proto, 0}})) {
+				key->l = key->l >> 32 | key->l << 32;
+				key->port = key->port >> 16 | key->port << 16;
+				break;
+			}
 			if (portSessionDPI(session, (TDPIKey){{key->destIP, key->destPort, key->proto, 0}})) break;
 		} while (false);
 
