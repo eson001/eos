@@ -599,6 +599,23 @@ int sodero_report_flow_body(PSoderoPortSession value, int flag) {
 
 		TSoderoFLOWSessionBody * record = &content->TSoderoTCPSessionContent_u.flow_body;
         
+        record->flow_sessin_id = value->id;
+        record->age = value->e > value->b ? (value->e - value->b) / uSecsPerMSec : 0;
+        record->connect_time = value->b / uSecsPerSec;
+        record->vlan = value->eth.vlan;
+        //		*(PMAC)record->client_mac = value->eth.sour;
+        memcpy(record->client_mac, &value->eth.sour, sizeof(value->eth.sour));
+        //		*(PMAC)record->server_mac = value->eth.dest;
+        memcpy(record->server_mac, &value->eth.dest, sizeof(value->eth.dest));
+        //		*(unsigned int *)record->client_ip = value->key.sourIP;
+        memcpy(record->client_ip, &value->key.sourIP, sizeof(value->key.sourIP));
+        //		*(unsigned int *)record->server_ip = value->key.destIP;
+        memcpy(record->server_ip, &value->key.destIP, sizeof(value->key.destIP));
+        record->client_port = value->key.sourPort;
+        record->server_port = value->key.destPort;
+        record->identify = value->key.sequence;
+        
+        record->l2_type = L2_TYPE_IPV4;
 		record->l3_type = value->key.proto;
 
 		record->flow_sessin_id = value->id;
@@ -1274,6 +1291,27 @@ int sodero_report_http_body(PSoderoApplicationHTTP value, int flag) {
 
 		TSoderoHTTPSessionBody * record = &content->TSoderoTCPSessionContent_u.http_body;
 		record->http_session_id = value->id;
+        record->flow_session_id = value->owner->id;
+        
+        memcpy(record->client_mac, &value->owner->eth.sour, sizeof(value->owner->eth.sour));
+        memcpy(record->server_mac, &value->owner->eth.dest, sizeof(value->owner->eth.dest));
+        memcpy(record->client_ip, &value->owner->key.sourIP, sizeof(value->owner->key.sourIP));
+        memcpy(record->server_ip, &value->owner->key.destIP, sizeof(value->owner->key.destIP));
+        record->client_port = value->owner->key.sourPort;
+        record->server_port = value->owner->key.destPort;
+        
+        
+        snprintf((char*)record->method, sizeof(record->method) - 1, "%s", nameOfHTTPMethod(value->method_code));
+        
+        SODERO_SAFE_TEXT(record, url, value->url);
+        SODERO_SAFE_TEXT(record, host, value->host);
+        SODERO_SAFE_TEXT(record, user_agent, value->ua);
+        SODERO_SAFE_TEXT(record, referer, value->referer);
+        SODERO_SAFE_TEXT(record, origin, value->origin);
+        SODERO_SAFE_TEXT(record, cookies, value->req_cookies);
+        SODERO_SAFE_TEXT(record, soap_action, value->soap_method);
+        
+        
 //		SODERO_SAFE_TEXT(record, title, value->title);
 		SODERO_SAFE_TEXT(record, content_type, value->rsp_content_type);
 		SODERO_SAFE_TEXT(record, soap_method, value->soap_method);

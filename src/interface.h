@@ -93,7 +93,18 @@ typedef struct TSoderoFLOWSessionHead TSoderoFLOWSessionHead;
 
 struct TSoderoFLOWSessionBody {
 	u_int64_t flow_sessin_id;
-	TSoderoL3Type l3_type;    
+    u_int age;
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
+    u_int identify;
+    TSoderoL2Type l2_type;
+    TSoderoL3Type l3_type;
+    u_short vlan;
+    u_int connect_time;
 	u_char flag;
 	u_char app;
 	u_short major;
@@ -185,6 +196,47 @@ typedef struct TSoderoHTTPSessionHead TSoderoHTTPSessionHead;
 
 struct TSoderoHTTPSessionBody {
 	u_int64_t http_session_id;
+    u_int64_t flow_session_id;
+    u_char client_mac[6];
+    u_char client_ip[16];
+    u_short client_port;
+    u_char server_mac[6];
+    u_char server_ip[16];
+    u_short server_port;
+    u_char method[12];
+    struct {
+        u_int url_len;
+        u_char *url_val;
+    } url;
+    struct {
+        u_int host_len;
+        u_char *host_val;
+    } host;
+    struct {
+        u_int user_agent_len;
+        u_char *user_agent_val;
+    } user_agent;
+    struct {
+        u_int referer_len;
+        u_char *referer_val;
+    } referer;
+    struct {
+        u_int origin_len;
+        u_char *origin_val;
+    } origin;
+    struct {
+        u_int cookies_len;
+        u_char *cookies_val;
+    } cookies;
+    struct {
+        u_int req_sample_len;
+        u_char *req_sample_val;
+    } req_sample;
+    struct {
+        u_int soap_action_len;
+        u_char *soap_action_val;
+    } soap_action;
+    
 	struct {
 		u_int title_len;
 		u_char *title_val;
