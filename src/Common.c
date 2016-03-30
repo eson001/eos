@@ -145,7 +145,6 @@ int DPI_LogInit(char *szFName)
 
 int DPI_Log(TSodero_logging_level log_level, char *fmt,...)
 {
-    return 0;
     char txtBuf[LOG_BUF_LEN+1];
     static int file_len = 0;
     va_list ap;
